@@ -478,8 +478,12 @@ export const PokemonModal = memo(function PokemonModal({
                         alt=""
                         aria-hidden="true"
                         onError={(event) => {
-                          event.currentTarget.src =
-                            detailCache[railId]?.sprites.front_default ?? officialImage(railId)
+                          const fallbackSprite = detailCache[railId]?.sprites.front_default ?? officialImage(railId)
+                          if (event.currentTarget.src !== fallbackSprite) {
+                            event.currentTarget.src = fallbackSprite
+                            return
+                          }
+                          event.currentTarget.onerror = null
                         }}
                       />
                       <span>No. {formatId(railId)}</span>
