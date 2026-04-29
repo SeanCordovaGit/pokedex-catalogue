@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
@@ -29,7 +29,6 @@ import {
   type TypeDetail,
 } from './api'
 import { PokemonList } from './components/PokemonList'
-import { PokemonModal } from './components/PokemonModal'
 import { REGION_RANGES, getPokemonRegion, type RegionName } from './regions'
 import './index.css'
 
@@ -38,6 +37,18 @@ gsap.registerPlugin(ScrollTrigger)
 const HOME_MODE_STORAGE_KEY = 'pokedex-home-mode-v2'
 const FAVORITES_STORAGE_KEY = 'pokedex-favorites-v1'
 
+/**
+ * Defers the detailed modal bundle until a Pokémon is opened.
+ * @returns Lazy React component for the Pokémon detail modal.
+ */
+const PokemonModal = lazy(() =>
+  import('./components/PokemonModal').then((module) => ({ default: module.PokemonModal })),
+)
+
+/**
+ * Reads favorite Pokémon IDs from localStorage.
+ * @returns Set of favorite Pokémon IDs, or an empty set when storage is unavailable.
+ */
 function readFavorites() {
   if (typeof window === 'undefined') return new Set<number>()
 
@@ -50,6 +61,50 @@ function readFavorites() {
   }
 }
 
+/**
+ * Reads the saved home mode while defaulting first-time visitors to day mode.
+ * @returns Home mode for the app shell.
+ */
+function readHomeMode(): HomeMode {
+  if (typeof window === 'undefined') return 'day'
+  const savedMode = window.localStorage.getItem(HOME_MODE_STORAGE_KEY)
+  return savedMode === 'night' || savedMode === 'day' ? savedMode : 'day'
+}
+
+/**
+ * Normalizes catalogue search input for name and ID matching.
+ * @param value - Raw search field value.
+ * @returns Lowercase search value without a leading hash.
+ */
+function normalizeSearch(value: string) {
+  return value.trim().toLowerCase().replace(/^#/, '')
+}
+
+/**
+ * Checks whether a Pokémon matches the current search query.
+ * @param entry - Pokémon list item to evaluate.
+ * @param normalizedSearch - Normalized user search query.
+ * @returns True when name or numeric ID matches.
+ */
+function matchesSearch(entry: PokemonListItem, normalizedSearch: string) {
+  if (!normalizedSearch) return true
+
+  // Numeric searches accept both exact padded IDs ("025") and loose prefixes ("2").
+  const numericSearch = /^\d+$/.test(normalizedSearch)
+  const idMatch = numericSearch
+    ? normalizedSearch.length >= 3
+      ? formatId(entry.id) === normalizedSearch
+      : String(entry.id).startsWith(normalizedSearch)
+    : false
+
+  return entry.name.includes(normalizedSearch) || idMatch
+}
+
+/**
+ * Renders the click/keyboard intro title screen.
+ * @param props - Callbacks for when the intro begins exiting and fully completes.
+ * @returns Full-screen intro overlay.
+ */
 function IntroSequence({
   onExitStart,
   onComplete,
@@ -106,27 +161,16 @@ function IntroSequence({
 
     const onKeyDown = (event: KeyboardEvent) => {
       startTitleAudio()
-      if ((event.ctrlKey || event.metaKey) && ['+', '=', '-', '0'].includes(event.key)) {
-        event.preventDefault()
-        return
-      }
       if (event.key === 'Enter') {
         completeIntro()
       }
     }
 
-    const preventZoomWheel = (event: WheelEvent) => {
-      if (event.ctrlKey || event.metaKey) {
-        event.preventDefault()
-      }
-    }
-
-    const preventTouchZoom = (event: TouchEvent) => {
-      if (event.touches.length > 1) {
-        event.preventDefault()
-      }
-    }
-
+    /**
+     * Advances the intro from any click/tap except the music button.
+     * @param event - Browser pointer event.
+     * @returns Nothing.
+     */
     const onIntroPointerDown = (event: PointerEvent) => {
       if ((event.target as Element).closest('.intro-mute-button')) return
       startTitleAudio()
@@ -135,8 +179,6 @@ function IntroSequence({
 
     window.addEventListener('keydown', onKeyDown)
     overlay.addEventListener('pointerdown', onIntroPointerDown)
-    window.addEventListener('wheel', preventZoomWheel, { passive: false })
-    window.addEventListener('touchmove', preventTouchZoom, { passive: false })
     window.addEventListener('pointerdown', startTitleAudio, { once: true })
     window.setTimeout(startTitleAudio, 0)
 
@@ -146,8 +188,6 @@ function IntroSequence({
       return () => {
         window.removeEventListener('keydown', onKeyDown)
         overlay.removeEventListener('pointerdown', onIntroPointerDown)
-        window.removeEventListener('wheel', preventZoomWheel)
-        window.removeEventListener('touchmove', preventTouchZoom)
         window.removeEventListener('pointerdown', startTitleAudio)
         document.body.style.overflow = originalOverflow
       }
@@ -165,8 +205,6 @@ function IntroSequence({
     return () => {
       window.removeEventListener('keydown', onKeyDown)
       overlay.removeEventListener('pointerdown', onIntroPointerDown)
-      window.removeEventListener('wheel', preventZoomWheel)
-      window.removeEventListener('touchmove', preventTouchZoom)
       window.removeEventListener('pointerdown', startTitleAudio)
       context.revert()
       document.body.style.overflow = originalOverflow
@@ -226,6 +264,10 @@ function IntroSequence({
   )
 }
 
+/**
+ * Coordinates app state, filtering, data loading, and top-level routes.
+ * @returns The complete Pokédex application.
+ */
 function App() {
   const [pokemon, setPokemon] = useState<PokemonListItem[]>([])
   const [detailCache, setDetailCache] = useState<Record<number, PokemonDetail>>({})
@@ -244,48 +286,15 @@ function App() {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [introComplete, setIntroComplete] = useState(false)
   const [homeRevealReady, setHomeRevealReady] = useState(false)
-  const [homeMode, setHomeMode] = useState<HomeMode>(() => {
-    if (typeof window === 'undefined') return 'day'
-    const savedMode = window.localStorage.getItem(HOME_MODE_STORAGE_KEY)
-    return savedMode === 'night' || savedMode === 'day' ? savedMode : 'day'
-  })
+  const [homeMode, setHomeMode] = useState<HomeMode>(() => readHomeMode())
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
   const heroRef = useRef<HTMLElement | null>(null)
   const typeMenuRef = useRef<HTMLDivElement | null>(null)
   const regionMenuRef = useRef<HTMLDivElement | null>(null)
-  const infiniteSentinelRef = useRef<HTMLDivElement | null>(null)
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null)
   const homeRevealPlayedRef = useRef(false)
-
-  useEffect(() => {
-    const preventZoomKeys = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && ['+', '=', '-', '0'].includes(event.key)) {
-        event.preventDefault()
-      }
-    }
-
-    const preventZoomWheel = (event: WheelEvent) => {
-      if (event.ctrlKey || event.metaKey) {
-        event.preventDefault()
-      }
-    }
-
-    const preventTouchZoom = (event: TouchEvent) => {
-      if (event.touches.length > 1) {
-        event.preventDefault()
-      }
-    }
-
-    window.addEventListener('keydown', preventZoomKeys)
-    window.addEventListener('wheel', preventZoomWheel, { passive: false })
-    window.addEventListener('touchmove', preventTouchZoom, { passive: false })
-
-    return () => {
-      window.removeEventListener('keydown', preventZoomKeys)
-      window.removeEventListener('wheel', preventZoomWheel)
-      window.removeEventListener('touchmove', preventTouchZoom)
-    }
-  }, [])
 
   useEffect(() => {
     window.localStorage.setItem(HOME_MODE_STORAGE_KEY, homeMode)
@@ -296,6 +305,11 @@ function App() {
   }, [favoriteIds])
 
   useEffect(() => {
+    /**
+     * Closes open dropdown menus when the user clicks elsewhere.
+     * @param event - Browser pointer event.
+     * @returns Nothing.
+     */
     function onPointerDown(event: PointerEvent) {
       if (!typeMenuRef.current?.contains(event.target as Node)) {
         setTypeMenuOpen(false)
@@ -305,6 +319,11 @@ function App() {
       }
     }
 
+    /**
+     * Closes dropdown menus from the Escape key.
+     * @param event - Browser keyboard event.
+     * @returns Nothing.
+     */
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         setTypeMenuOpen(false)
@@ -323,6 +342,10 @@ function App() {
   useEffect(() => {
     let cancelled = false
 
+    /**
+     * Loads the catalogue list and static type options in parallel.
+     * @returns Promise that resolves when initial data is stored.
+     */
     async function loadInitialData() {
       setLoading(true)
       setError('')
@@ -350,6 +373,10 @@ function App() {
   useEffect(() => {
     let cancelled = false
 
+    /**
+     * Loads the selected type's Pokémon ID set for fast filtering.
+     * @returns Promise that resolves when type filter IDs are synchronized.
+     */
     async function loadTypeFilter() {
       if (typeFilter === 'all') {
         setTypeFilterIds(null)
@@ -382,21 +409,14 @@ function App() {
   }, [typeCache, typeFilter])
 
   const filteredPokemon = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase().replace(/^#/, '')
+    const normalizedSearch = normalizeSearch(searchTerm)
 
     return pokemon
       .filter((entry) => {
-        const numericSearch = /^\d+$/.test(normalizedSearch)
-        const idMatch = numericSearch
-          ? normalizedSearch.length >= 3
-            ? formatId(entry.id) === normalizedSearch
-            : String(entry.id).startsWith(normalizedSearch)
-          : false
-        const matchesSearch = !normalizedSearch || entry.name.includes(normalizedSearch) || idMatch
         const matchesType = !typeFilterIds || typeFilterIds.has(entry.id)
         const matchesRegion = regionFilter === 'all' || getPokemonRegion(entry.id) === regionFilter
         const matchesFavorite = !favoritesOnly || favoriteIds.has(entry.id)
-        return matchesSearch && matchesType && matchesRegion && matchesFavorite
+        return matchesSearch(entry, normalizedSearch) && matchesType && matchesRegion && matchesFavorite
       })
       .sort((a, b) => (sortMode === 'id' ? a.id - b.id : a.name.localeCompare(b.name)))
   }, [favoriteIds, favoritesOnly, pokemon, regionFilter, searchTerm, sortMode, typeFilterIds])
@@ -408,6 +428,12 @@ function App() {
   const hasMore = visibleCount < filteredPokemon.length
 
   useEffect(() => {
+    if (!loadingMore) return
+    const timeoutId = window.setTimeout(() => setLoadingMore(false), 360)
+    return () => window.clearTimeout(timeoutId)
+  }, [loadingMore, visibleCount])
+
+  useEffect(() => {
     let cancelled = false
     const missingIds = visiblePokemon
       .map(({ id }) => id)
@@ -416,6 +442,10 @@ function App() {
 
     if (missingIds.length === 0) return
 
+    /**
+     * Fetches details for currently visible cards that are not cached yet.
+     * @returns Promise that resolves when visible details are cached.
+     */
     async function loadVisibleDetails() {
       const entries = await Promise.allSettled(
         missingIds.map(async (id) => [id, await getPokemonDetail(id)] as const),
@@ -441,23 +471,6 @@ function App() {
       cancelled = true
     }
   }, [detailCache, visiblePokemon])
-
-  useEffect(() => {
-    const sentinel = infiniteSentinelRef.current
-    if (!sentinel || !hasMore || loading) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisibleCount((current) => Math.min(current + PAGE_SIZE, filteredPokemon.length))
-        }
-      },
-      { rootMargin: '520px 0px' },
-    )
-
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [filteredPokemon.length, hasMore, loading])
 
   useEffect(() => {
     if (!homeRevealReady) return
@@ -492,6 +505,30 @@ function App() {
   const openDetail = useCallback((id: number) => {
     setSelectedId(id)
   }, [])
+
+  const loadMorePokemon = useCallback(() => {
+    if (!hasMore || loadingMore) return
+    setLoadingMore(true)
+    setVisibleCount((current) => Math.min(current + PAGE_SIZE, filteredPokemon.length))
+  }, [filteredPokemon.length, hasMore, loadingMore])
+
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current
+    if (!sentinel || !hasMore || loading || loadingMore) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Auto-load fallback: uses the same code path as the visible button.
+          loadMorePokemon()
+        }
+      },
+      { rootMargin: '180px 0px', threshold: 0.01 },
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loadMorePokemon, loading, loadingMore, visibleCount])
 
   const toggleFavorite = useCallback((id: number) => {
     setFavoriteIds((current) => {
@@ -698,8 +735,10 @@ function App() {
                   detailCache={detailCache}
                   favoriteIds={favoriteIds}
                   loading={loading}
+                  loadingMore={loadingMore}
                   hasMore={hasMore}
-                  sentinelRef={infiniteSentinelRef}
+                  sentinelRef={loadMoreSentinelRef}
+                  onLoadMore={loadMorePokemon}
                   onOpen={openDetail}
                   onToggleFavorite={toggleFavorite}
                 />
@@ -720,19 +759,21 @@ function App() {
         </footer>
 
         {selectedId !== null ? (
-          <PokemonModal
-            id={selectedId}
-            mode={homeMode}
-            onClose={() => setSelectedId(null)}
-            onNavigate={(nextId) => setSelectedId(nextId)}
-            pokemon={pokemon}
-            detailCache={detailCache}
-            setDetailCache={setDetailCache}
-            typeCache={typeCache}
-            setTypeCache={setTypeCache}
-            favoriteIds={favoriteIds}
-            onToggleFavorite={toggleFavorite}
-          />
+          <Suspense fallback={null}>
+            <PokemonModal
+              id={selectedId}
+              mode={homeMode}
+              onClose={() => setSelectedId(null)}
+              onNavigate={(nextId) => setSelectedId(nextId)}
+              pokemon={pokemon}
+              detailCache={detailCache}
+              setDetailCache={setDetailCache}
+              typeCache={typeCache}
+              setTypeCache={setTypeCache}
+              favoriteIds={favoriteIds}
+              onToggleFavorite={toggleFavorite}
+            />
+          </Suspense>
         ) : null}
       </main>
       {!introComplete ? (

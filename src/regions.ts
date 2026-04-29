@@ -30,6 +30,11 @@ export const REGION_RANGES: RegionRange[] = [
   { name: 'paldea', start: 906, end: 1010 },
 ]
 
+/**
+ * Maps a national Pokédex ID to the Pokémon's origin region.
+ * @param id - Numeric national Pokédex ID.
+ * @returns Region name used by the region filter.
+ */
 export function getPokemonRegion(id: number) {
   return REGION_RANGES.find((region) => id >= region.start && id <= region.end)?.name ?? 'paldea'
 }

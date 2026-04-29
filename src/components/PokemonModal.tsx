@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ChevronLeft, ChevronRight, Loader2, Star, X } from 'lucide-react'
 import {
@@ -34,7 +34,39 @@ const STAT_COLORS: Record<string, string> = {
   speed: '#23b35d',
 }
 
-export function PokemonModal({
+/**
+ * Finds the display label for a base stat.
+ * @param statName - PokeAPI stat key.
+ * @returns Short stat label for the modal table.
+ */
+function getStatLabel(statName: string) {
+  return STAT_LABELS[statName] ?? titleCase(statName)
+}
+
+/**
+ * Finds the themed bar color for a base stat.
+ * @param statName - PokeAPI stat key.
+ * @returns CSS color for the stat bar.
+ */
+function getStatColor(statName: string) {
+  return STAT_COLORS[statName] ?? '#4f8f74'
+}
+
+/**
+ * Converts a stat value into a capped percentage width.
+ * @param value - Numeric base stat.
+ * @returns Width percentage used by the stat bar.
+ */
+function getStatWidth(value: number) {
+  return `${Math.min(100, (value / STAT_MAX) * 100)}%`
+}
+
+/**
+ * Renders the detailed Pokémon profile modal.
+ * @param props - Selected Pokémon ID, cached API data, navigation, close, and favorite handlers.
+ * @returns Modal dialog element.
+ */
+export const PokemonModal = memo(function PokemonModal({
   id,
   mode,
   onClose,
@@ -96,6 +128,10 @@ export function PokemonModal({
   useEffect(() => {
     let cancelled = false
 
+    /**
+     * Loads the active Pokémon, species flavor text, and missing type data.
+     * @returns Promise that resolves after modal state is synchronized.
+     */
     async function loadDetail() {
       setLoading(true)
       setError('')
@@ -194,6 +230,11 @@ export function PokemonModal({
     currentIndex >= 0 && currentIndex < pokemon.length - 1 ? pokemon[currentIndex + 1] : null
 
   useEffect(() => {
+    /**
+     * Handles modal keyboard shortcuts for close and adjacent navigation.
+     * @param event - Browser keyboard event.
+     * @returns Nothing.
+     */
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') closeWithAnimation()
       if (event.key === 'ArrowLeft' && previousPokemon) onNavigate(previousPokemon.id)
@@ -240,7 +281,7 @@ export function PokemonModal({
   return (
     <div
       ref={backdropRef}
-      className={`arceus-modal-backdrop arceus-modal-${mode} fixed inset-0 z-50 flex items-center justify-center px-4 py-6`}
+      className={`detail-modal-backdrop detail-modal-${mode} fixed inset-0 z-50 flex items-center justify-center px-4 py-6`}
       role="dialog"
       aria-modal="true"
       aria-label="Pokemon detail"
@@ -250,11 +291,11 @@ export function PokemonModal({
     >
       <div
         ref={modalRef}
-        className="arceus-pokedex max-h-[94svh] w-full max-w-7xl overflow-y-auto text-[#203447]"
+        className="detail-pokedex max-h-[94svh] w-full max-w-7xl overflow-y-auto text-[#203447]"
       >
         <button
           type="button"
-          className="arceus-close-button"
+          className="detail-close-button"
           onClick={closeWithAnimation}
           aria-label="Close detail"
         >
@@ -262,29 +303,29 @@ export function PokemonModal({
         </button>
 
         {loading && (
-          <div className="arceus-loading">
+          <div className="detail-loading">
             <Loader2 className="h-5 w-5 animate-spin" />
             Loading Pokemon profile
           </div>
         )}
 
-        {error && !loading ? <div className="arceus-error">{error}</div> : null}
+        {error && !loading ? <div className="detail-error">{error}</div> : null}
 
         {detail && !loading && !error ? (
-          <div className="arceus-shell">
-            <section className="arceus-main-page">
-              <div className="arceus-tabs" aria-hidden="true">
-                <span className="arceus-pokeball-tab" />
+          <div className="detail-shell">
+            <section className="detail-main-page">
+              <div className="detail-tabs" aria-hidden="true">
+                <span className="detail-pokeball-tab" />
               </div>
 
-              <header className="arceus-header">
-                <span className="arceus-number">No. {formatId(detail.id)}</span>
+              <header className="detail-header">
+                <span className="detail-number">No. {formatId(detail.id)}</span>
                 <h2>{titleCase(detail.name)}</h2>
-                <span className="arceus-category">{category}</span>
-                <div className="arceus-header-types">
+                <span className="detail-category">{category}</span>
+                <div className="detail-header-types">
                   <button
                     type="button"
-                    className={`arceus-favorite-button${favoriteIds.has(detail.id) ? ' is-active' : ''}`}
+                    className={`detail-favorite-button${favoriteIds.has(detail.id) ? ' is-active' : ''}`}
                     onClick={() => onToggleFavorite(detail.id)}
                     aria-label={
                       favoriteIds.has(detail.id)
@@ -296,20 +337,20 @@ export function PokemonModal({
                     <Star className="h-4 w-4" />
                   </button>
                   {detail.types.map(({ type }) => (
-                    <span key={type.name} className={`arceus-type-chip arceus-type-${type.name}`}>
+                    <span key={type.name} className={`detail-type-chip detail-type-${type.name}`}>
                       {titleCase(type.name)}
                     </span>
                   ))}
                 </div>
               </header>
 
-              <div className="arceus-page-body">
-                <section className="arceus-photo-panel">
-                  <div className="arceus-photo-frame">
-                    <span className="arceus-photo-corner arceus-photo-corner-tl" />
-                    <span className="arceus-photo-corner arceus-photo-corner-br" />
+              <div className="detail-page-body">
+                <section className="detail-photo-panel">
+                  <div className="detail-photo-frame">
+                    <span className="detail-photo-corner detail-photo-corner-tl" />
+                    <span className="detail-photo-corner detail-photo-corner-br" />
                     <img
-                      className="arceus-pokemon-art"
+                      className="detail-pokemon-art"
                       src={officialArtwork}
                       alt={titleCase(detail.name)}
                       loading="lazy"
@@ -318,10 +359,10 @@ export function PokemonModal({
                       }}
                     />
                   </div>
-                  <div className="arceus-nav-row">
+                  <div className="detail-nav-row">
                     <button
                       type="button"
-                      className="arceus-nav-button"
+                      className="detail-nav-button"
                       onClick={() => {
                         if (previousPokemon) onNavigate(previousPokemon.id)
                       }}
@@ -334,7 +375,7 @@ export function PokemonModal({
                     <span>No. {formatId(detail.id)}</span>
                     <button
                       type="button"
-                      className="arceus-nav-button"
+                      className="detail-nav-button"
                       onClick={() => {
                         if (nextPokemon) onNavigate(nextPokemon.id)
                       }}
@@ -347,8 +388,8 @@ export function PokemonModal({
                   </div>
                 </section>
 
-                <section className="arceus-info-panel">
-                  <div className="arceus-measure-list">
+                <section className="detail-info-panel">
+                  <div className="detail-measure-list">
                     <div>
                       <span>Weight</span>
                       <strong>{weightLbs} lbs.</strong>
@@ -361,12 +402,12 @@ export function PokemonModal({
                     </div>
                   </div>
 
-                  <div className="arceus-info-block">
+                  <div className="detail-info-block">
                     <h3>Abilities</h3>
                     <p>{detail.abilities.map(({ ability }) => titleCase(ability.name)).join(', ')}</p>
                   </div>
 
-                  <div className="arceus-info-block">
+                  <div className="detail-info-block">
                     <h3>Weaknesses</h3>
                     <p>
                       {weaknesses.length > 0
@@ -375,34 +416,34 @@ export function PokemonModal({
                     </p>
                   </div>
 
-                  <div className="arceus-info-block arceus-stats-block">
+                  <div className="detail-info-block detail-stats-block">
                     <h3>Base Stats</h3>
-                    <div className="arceus-stat-bars">
+                    <div className="detail-stat-bars">
                       {detail.stats.map(({ stat, base_stat }) => (
-                        <div className="arceus-stat-row" key={stat.name}>
-                          <span>{STAT_LABELS[stat.name] ?? titleCase(stat.name)}</span>
+                        <div className="detail-stat-row" key={stat.name}>
+                          <span>{getStatLabel(stat.name)}</span>
                           <strong>{base_stat}</strong>
-                          <div className="arceus-stat-track">
+                          <div className="detail-stat-track">
                             <span
                               style={{
-                                width: `${Math.min(100, (base_stat / STAT_MAX) * 100)}%`,
-                                background: STAT_COLORS[stat.name] ?? '#4f8f74',
+                                width: getStatWidth(base_stat),
+                                background: getStatColor(stat.name),
                               }}
                             />
                           </div>
                         </div>
                       ))}
-                      <div className="arceus-stat-row arceus-stat-total">
+                      <div className="detail-stat-row detail-stat-total">
                         <span>Total</span>
                         <strong>{statTotal}</strong>
-                        <div className="arceus-stat-track" aria-hidden="true" />
+                        <div className="detail-stat-track" aria-hidden="true" />
                       </div>
                     </div>
                   </div>
                 </section>
               </div>
 
-              <footer className="arceus-research-note">
+              <footer className="detail-research-note">
                 <p>{flavorText || 'No field notes are available for this Pokemon.'}</p>
                 <div>
                   <span>Research Level</span>
@@ -411,9 +452,9 @@ export function PokemonModal({
               </footer>
             </section>
 
-            <aside className="arceus-region-rail" aria-label="Nearby Pokemon">
+            <aside className="detail-region-rail" aria-label="Nearby Pokemon">
               <h3>PokeDex</h3>
-              <div className="arceus-rail-list">
+              <div className="detail-rail-list">
                 {nearbyIds.map((railId) => {
                   const railPokemon = pokemonById.get(railId) ?? detailCache[railId]
                   const railName = railPokemon?.name ?? `Pokemon ${formatId(railId)}`
@@ -423,7 +464,7 @@ export function PokemonModal({
                     <button
                       key={railId}
                       type="button"
-                      className={`arceus-rail-item${active ? ' is-active' : ''}`}
+                      className={`detail-rail-item${active ? ' is-active' : ''}`}
                       onClick={() => onNavigate(railId)}
                       aria-current={active ? 'true' : undefined}
                     >
@@ -442,7 +483,7 @@ export function PokemonModal({
                   )
                 })}
               </div>
-              <p className="arceus-rail-order">
+              <p className="detail-rail-order">
                 {activePokemon ? `${titleCase(activePokemon.name)} in catalogue order` : 'Ordered numerically'}
               </p>
             </aside>
@@ -451,4 +492,4 @@ export function PokemonModal({
       </div>
     </div>
   )
-}
+})

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { Star } from 'lucide-react'
 import {
   formatId,
@@ -7,15 +8,25 @@ import {
   type PokemonListItem,
 } from '../api'
 
-function TypeChip({ type }: { type: string }) {
+/**
+ * Renders a themed type badge.
+ * @param type - PokeAPI type name.
+ * @returns Type chip element.
+ */
+const TypeChip = memo(function TypeChip({ type }: { type: string }) {
   return (
     <span className={`catalogue-type-chip catalogue-type-${type}`}>
       {titleCase(type)}
     </span>
   )
-}
+})
 
-export function PokemonCard({
+/**
+ * Renders one interactive catalogue card with favorite and detail actions.
+ * @param props - Card item, cached details, favorite state, and event handlers.
+ * @returns Catalogue card element.
+ */
+export const PokemonCard = memo(function PokemonCard({
   item,
   detail,
   isFavorite,
@@ -66,7 +77,8 @@ export function PokemonCard({
             src={officialImage(item.id)}
             alt={titleCase(item.name)}
             loading="lazy"
-            onError={(event) => {
+          onError={(event) => {
+              // Official artwork can be missing for edge cases, so fall back to PokeAPI sprites.
               if (fallback && event.currentTarget.src !== fallback) {
                 event.currentTarget.src = fallback
               }
@@ -100,9 +112,13 @@ export function PokemonCard({
       </button>
     </article>
   )
-}
+})
 
-export function PokemonCardSkeleton() {
+/**
+ * Renders a placeholder card while Pokémon details are loading.
+ * @returns Skeleton card element.
+ */
+export const PokemonCardSkeleton = memo(function PokemonCardSkeleton() {
   return (
     <article className="pokemon-card catalogue-card catalogue-card-skeleton">
       <span className="catalogue-card-id catalogue-skeleton catalogue-skeleton-id" />
@@ -123,4 +139,4 @@ export function PokemonCardSkeleton() {
       </div>
     </article>
   )
-}
+})
