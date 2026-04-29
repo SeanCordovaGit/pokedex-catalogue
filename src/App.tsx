@@ -801,6 +801,7 @@ function App() {
   const [error, setError] = useState('')
   const heroRef = useRef<HTMLElement | null>(null)
   const typeMenuRef = useRef<HTMLDivElement | null>(null)
+  const homeRevealPlayedRef = useRef(false)
 
   useEffect(() => {
     const preventZoomKeys = (event: KeyboardEvent) => {
@@ -994,7 +995,10 @@ function App() {
 
   useEffect(() => {
     if (!homeRevealReady) return
+    if (homeRevealPlayedRef.current) return
     if (!heroRef.current) return
+    homeRevealPlayedRef.current = true
+
     const context = gsap.context(() => {
       gsap.fromTo(
         '.route-home-reveal',
@@ -1014,30 +1018,10 @@ function App() {
         { opacity: 0, scale: 0.62 },
         { opacity: 1, scale: 1, duration: 0.82, ease: 'back.out(1.9)', delay: 0.12 },
       )
-
-      gsap.utils.toArray<HTMLElement>('.pokemon-card').forEach((card) => {
-        gsap.fromTo(
-          card,
-          { y: 34, opacity: 0.35, scale: 0.96 },
-          {
-            y: 0,
-            opacity: 1,
-            scale: 1,
-            duration: 0.75,
-            ease: 'power3.out',
-            scrollTrigger: {
-              trigger: card,
-              start: 'top 92%',
-              end: 'bottom 15%',
-              toggleActions: 'play none none reverse',
-            },
-          },
-        )
-      })
     }, heroRef)
 
     return () => context.revert()
-  }, [filteredPokemon.length, homeRevealReady, visiblePokemon.length])
+  }, [homeRevealReady])
 
   const openDetail = useCallback((id: number) => {
     setSelectedId(id)
