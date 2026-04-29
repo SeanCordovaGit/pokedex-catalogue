@@ -599,14 +599,34 @@ function IntroSequence({
   const promptRef = useRef<HTMLButtonElement | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const completedRef = useRef(false)
+  const mutedRef = useRef(false)
   const [muted, setMuted] = useState(false)
+
+  const completeIntro = useCallback(() => {
+    const overlay = overlayRef.current
+    if (!overlay || completedRef.current) return
+
+    completedRef.current = true
+    onExitStart()
+    window.scrollTo({ top: 0 })
+    gsap.to(overlay, {
+      autoAlpha: 0,
+      duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.12 : 0.42,
+      ease: 'power2.out',
+      onComplete: () => onComplete(),
+    })
+  }, [onComplete, onExitStart])
 
   const startTitleAudio = useCallback(() => {
     const audio = audioRef.current
-    if (!audio || muted || completedRef.current) return
+    if (!audio || mutedRef.current || completedRef.current) return
     audio.volume = 0.42
     audio.muted = false
     void audio.play().catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    mutedRef.current = muted
   }, [muted])
 
   useEffect(() => {
@@ -622,22 +642,6 @@ function IntroSequence({
     window.scrollTo({ top: 0 })
 
     const audioStartEvents: Array<keyof WindowEventMap> = ['pointerdown', 'keydown']
-
-    const completeIntro = () => {
-      if (completedRef.current) return
-      completedRef.current = true
-      onExitStart()
-      window.scrollTo({ top: 0 })
-      gsap.to(overlay, {
-        autoAlpha: 0,
-        duration: reducedMotion ? 0.12 : 0.42,
-        ease: 'power2.out',
-        onComplete: () => {
-          document.body.style.overflow = originalOverflow
-          onComplete()
-        },
-      })
-    }
 
     const onKeyDown = (event: KeyboardEvent) => {
       startTitleAudio()
@@ -665,7 +669,14 @@ function IntroSequence({
       }
     }
 
+    const onIntroPointerDown = (event: PointerEvent) => {
+      if ((event.target as Element).closest('.intro-mute-button')) return
+      startTitleAudio()
+      completeIntro()
+    }
+
     window.addEventListener('keydown', onKeyDown)
+    overlay.addEventListener('pointerdown', onIntroPointerDown)
     window.addEventListener('wheel', preventZoomWheel, { passive: false })
     window.addEventListener('touchmove', preventTouchZoom, { passive: false })
     audioStartEvents.forEach((eventName) => {
@@ -680,6 +691,7 @@ function IntroSequence({
       gsap.set([title, prompt], { autoAlpha: 1, y: 0 })
       return () => {
         window.removeEventListener('keydown', onKeyDown)
+        overlay.removeEventListener('pointerdown', onIntroPointerDown)
         window.removeEventListener('wheel', preventZoomWheel)
         window.removeEventListener('touchmove', preventTouchZoom)
         window.removeEventListener('pointerdown', startTitleAudio)
@@ -699,13 +711,14 @@ function IntroSequence({
 
     return () => {
       window.removeEventListener('keydown', onKeyDown)
+      overlay.removeEventListener('pointerdown', onIntroPointerDown)
       window.removeEventListener('wheel', preventZoomWheel)
       window.removeEventListener('touchmove', preventTouchZoom)
       window.removeEventListener('pointerdown', startTitleAudio)
       context.revert()
       document.body.style.overflow = originalOverflow
     }
-  }, [onComplete, onExitStart, startTitleAudio])
+  }, [completeIntro, startTitleAudio])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -731,23 +744,15 @@ function IntroSequence({
             ref={promptRef}
             type="button"
             className="intro-press-enter"
-            onClick={() => {
-              if (!completedRef.current) {
-                const overlay = overlayRef.current
-                if (!overlay) return
-                completedRef.current = true
-                onExitStart()
-                window.scrollTo({ top: 0 })
-                gsap.to(overlay, {
-                  autoAlpha: 0,
-                  duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.12 : 0.42,
-                  ease: 'power2.out',
-                  onComplete: () => onComplete(),
-                })
-              }
-            }}
+            onClick={completeIntro}
           >
-            Press Enter
+            <span className="intro-prompt-line">
+              Press Enter
+              <span className="intro-key-icon" aria-hidden="true">Enter</span>
+            </span>
+            <span className="intro-prompt-line intro-prompt-line-secondary">
+              or Click Anywhere
+            </span>
           </button>
         </div>
         <button
@@ -796,6 +801,36 @@ function App() {
   const [error, setError] = useState('')
   const heroRef = useRef<HTMLElement | null>(null)
   const typeMenuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const preventZoomKeys = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && ['+', '=', '-', '0'].includes(event.key)) {
+        event.preventDefault()
+      }
+    }
+
+    const preventZoomWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        event.preventDefault()
+      }
+    }
+
+    const preventTouchZoom = (event: TouchEvent) => {
+      if (event.touches.length > 1) {
+        event.preventDefault()
+      }
+    }
+
+    window.addEventListener('keydown', preventZoomKeys)
+    window.addEventListener('wheel', preventZoomWheel, { passive: false })
+    window.addEventListener('touchmove', preventTouchZoom, { passive: false })
+
+    return () => {
+      window.removeEventListener('keydown', preventZoomKeys)
+      window.removeEventListener('wheel', preventZoomWheel)
+      window.removeEventListener('touchmove', preventTouchZoom)
+    }
+  }, [])
 
   useEffect(() => {
     window.localStorage.setItem(HOME_MODE_STORAGE_KEY, homeMode)
