@@ -4,587 +4,50 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import {
   ArrowDownWideNarrow,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
+  MapPin,
   Moon,
-  Volume2,
-  VolumeX,
   Search,
   SlidersHorizontal,
+  Star,
   Sun,
-  X,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
+import {
+  PAGE_SIZE,
+  formatId,
+  getPokemonDetail,
+  getPokemonList,
+  getTypeDetail,
+  getTypeList,
+  idFromUrl,
+  titleCase,
+  type HomeMode,
+  type PokemonDetail,
+  type PokemonListItem,
+  type SortMode,
+  type TypeDetail,
+} from './api'
+import { PokemonList } from './components/PokemonList'
+import { PokemonModal } from './components/PokemonModal'
+import { REGION_RANGES, getPokemonRegion, type RegionName } from './regions'
 import './index.css'
 
 gsap.registerPlugin(ScrollTrigger)
 
-const MAX_POKEMON_ID = 1010
-const PAGE_SIZE = 10
-const API_BASE = 'https://pokeapi.co/api/v2'
 const HOME_MODE_STORAGE_KEY = 'pokedex-home-mode-v2'
+const FAVORITES_STORAGE_KEY = 'pokedex-favorites-v1'
 
-type SortMode = 'id' | 'name'
-type HomeMode = 'day' | 'night'
+function readFavorites() {
+  if (typeof window === 'undefined') return new Set<number>()
 
-type PokemonListItem = {
-  id: number
-  name: string
-}
-
-type NamedResource = {
-  name: string
-  url: string
-}
-
-type PokemonDetail = {
-  id: number
-  name: string
-  height: number
-  weight: number
-  sprites: {
-    other?: {
-      'official-artwork'?: {
-        front_default?: string | null
-      }
-    }
-    front_default?: string | null
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(FAVORITES_STORAGE_KEY) ?? '[]')
+    if (!Array.isArray(parsed)) return new Set<number>()
+    return new Set(parsed.filter((id): id is number => Number.isInteger(id) && id > 0))
+  } catch {
+    return new Set<number>()
   }
-  types: Array<{
-    slot: number
-    type: NamedResource
-  }>
-  abilities: Array<{
-    ability: NamedResource
-    is_hidden: boolean
-  }>
-  stats: Array<{
-    base_stat: number
-    stat: NamedResource
-  }>
-}
-
-type PokemonSpecies = {
-  genera: Array<{
-    genus: string
-    language: NamedResource
-  }>
-  flavor_text_entries: Array<{
-    flavor_text: string
-    language: NamedResource
-  }>
-}
-
-type TypeDetail = {
-  damage_relations: {
-    double_damage_from: NamedResource[]
-  }
-  pokemon: Array<{
-    pokemon: NamedResource
-  }>
-}
-
-function formatId(id: number) {
-  return String(id).padStart(3, '0')
-}
-
-function titleCase(value: string) {
-  return value
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-}
-
-function officialImage(id: number) {
-  return `https://assets.pokemon.com/assets/cms2/img/pokedex/full/${formatId(id)}.png`
-}
-
-function pixelSprite(id: number) {
-  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
-}
-
-function idFromUrl(url: string) {
-  const parts = url.split('/').filter(Boolean)
-  return Number(parts[parts.length - 1])
-}
-
-async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`)
-  }
-  return response.json() as Promise<T>
-}
-
-function TypeChip({ type }: { type: string }) {
-  return (
-    <span className={`catalogue-type-chip catalogue-type-${type}`}>
-      {titleCase(type)}
-    </span>
-  )
-}
-
-function PokemonCard({
-  item,
-  detail,
-  onOpen,
-}: {
-  item: PokemonListItem
-  detail?: PokemonDetail
-  onOpen: (id: number) => void
-}) {
-  const [imageSrc, setImageSrc] = useState(officialImage(item.id))
-  const fallback =
-    detail?.sprites.other?.['official-artwork']?.front_default ?? detail?.sprites.front_default ?? ''
-  const primaryType = detail?.types[0]?.type.name ?? 'normal'
-  const heightMeters = detail ? `${Number((detail.height / 10).toFixed(1))} M` : '--'
-  const weightKg = detail ? `${Number((detail.weight / 10).toFixed(1))} Kg` : '--'
-
-  return (
-    <button
-      type="button"
-      className={`pokemon-card catalogue-card catalogue-card-${primaryType} group`}
-      onClick={() => onOpen(item.id)}
-    >
-      <span className="catalogue-card-id">#{formatId(item.id)}</span>
-      <img
-        className="catalogue-card-ball"
-        src="/assets/pokeball.png"
-        alt=""
-        aria-hidden="true"
-      />
-      <div className="catalogue-card-art">
-        <img
-          className="catalogue-card-pokemon"
-          src={imageSrc}
-          alt={titleCase(item.name)}
-          loading="lazy"
-          onError={() => {
-            if (fallback && imageSrc !== fallback) {
-              setImageSrc(fallback)
-            }
-          }}
-        />
-      </div>
-      <div className="catalogue-card-body">
-        <h3>{titleCase(item.name)}</h3>
-        <div className="catalogue-card-types">
-          {detail ? (
-            detail.types.map(({ type }) => <TypeChip key={type.name} type={type.name} />)
-          ) : (
-            <span className="catalogue-type-chip catalogue-type-loading">
-              Loading
-            </span>
-          )}
-        </div>
-        <div className="catalogue-card-measures">
-          <div>
-            <span>Height</span>
-            <strong>{heightMeters}</strong>
-          </div>
-          <div>
-            <span>Weight</span>
-            <strong>{weightKg}</strong>
-          </div>
-        </div>
-        <span className="catalogue-card-more">More Details</span>
-      </div>
-    </button>
-  )
-}
-
-function DetailModal({
-  id,
-  mode,
-  onClose,
-  onNavigate,
-  pokemon,
-  detailCache,
-  setDetailCache,
-  typeCache,
-  setTypeCache,
-}: {
-  id: number
-  mode: HomeMode
-  onClose: () => void
-  onNavigate: (id: number) => void
-  pokemon: PokemonListItem[]
-  detailCache: Record<number, PokemonDetail>
-  setDetailCache: React.Dispatch<React.SetStateAction<Record<number, PokemonDetail>>>
-  typeCache: Record<string, TypeDetail>
-  setTypeCache: React.Dispatch<React.SetStateAction<Record<string, TypeDetail>>>
-}) {
-  const [detail, setDetail] = useState<PokemonDetail | null>(detailCache[id] ?? null)
-  const [species, setSpecies] = useState<PokemonSpecies | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const backdropRef = useRef<HTMLDivElement | null>(null)
-  const modalRef = useRef<HTMLDivElement | null>(null)
-  const closingRef = useRef(false)
-  const detailCacheRef = useRef(detailCache)
-  const typeCacheRef = useRef(typeCache)
-
-  useEffect(() => {
-    detailCacheRef.current = detailCache
-  }, [detailCache])
-
-  useEffect(() => {
-    typeCacheRef.current = typeCache
-  }, [typeCache])
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    const previousPaddingRight = document.body.style.paddingRight
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
-
-    document.body.style.overflow = 'hidden'
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`
-    }
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-      document.body.style.paddingRight = previousPaddingRight
-    }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadDetail() {
-      setLoading(true)
-      setError('')
-      try {
-        const pokemon =
-          detailCacheRef.current[id] ?? (await getJson<PokemonDetail>(`${API_BASE}/pokemon/${id}`))
-        const speciesData = await getJson<PokemonSpecies>(`${API_BASE}/pokemon-species/${id}`)
-
-        if (cancelled) return
-
-        setDetail(pokemon)
-        setSpecies(speciesData)
-        setDetailCache((current) => {
-          if (current[pokemon.id]) return current
-          const next = { ...current, [pokemon.id]: pokemon }
-          detailCacheRef.current = next
-          return next
-        })
-
-        const missingTypes = pokemon.types
-          .map(({ type }) => type.name)
-          .filter((typeName) => !typeCacheRef.current[typeName])
-
-        if (missingTypes.length > 0) {
-          const loadedTypes = await Promise.allSettled(
-            missingTypes.map(async (typeName) => [
-              typeName,
-              await getJson<TypeDetail>(`${API_BASE}/type/${typeName}`),
-            ] as const),
-          )
-
-          if (!cancelled) {
-            const fulfilledTypes = loadedTypes
-              .filter((result): result is PromiseFulfilledResult<readonly [string, TypeDetail]> => result.status === 'fulfilled')
-              .map((result) => result.value)
-
-            if (fulfilledTypes.length > 0) {
-              setTypeCache((current) => {
-                const next = { ...current, ...Object.fromEntries(fulfilledTypes) }
-                typeCacheRef.current = next
-                return next
-              })
-            }
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setError('Could not load this Pokemon profile.')
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    loadDetail()
-
-    return () => {
-      cancelled = true
-    }
-  }, [id, setDetailCache, setTypeCache])
-
-  useEffect(() => {
-    if (!modalRef.current) return
-    gsap.fromTo(
-      modalRef.current,
-      { y: 28, opacity: 0, scale: 0.98 },
-      { y: 0, opacity: 1, scale: 1, duration: 0.32, ease: 'power3.out' },
-    )
-  }, [id])
-
-  const closeWithAnimation = useCallback(() => {
-    if (closingRef.current) return
-    closingRef.current = true
-
-    const modal = modalRef.current
-    const backdrop = backdropRef.current
-
-    if (!modal || !backdrop) {
-      onClose()
-      return
-    }
-
-    gsap.killTweensOf([modal, backdrop])
-    gsap
-      .timeline({ onComplete: onClose })
-      .to(
-        modal,
-        {
-          y: 22,
-          opacity: 0,
-          scale: 0.975,
-          duration: 0.24,
-          ease: 'power2.in',
-        },
-        0,
-      )
-      .to(
-        backdrop,
-        {
-          opacity: 0,
-          duration: 0.26,
-          ease: 'power2.out',
-        },
-        0,
-      )
-  }, [onClose])
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') closeWithAnimation()
-      if (event.key === 'ArrowLeft') onNavigate(Math.max(1, id - 1))
-      if (event.key === 'ArrowRight') onNavigate(Math.min(MAX_POKEMON_ID, id + 1))
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [closeWithAnimation, id, onNavigate])
-
-  const pokemonById = useMemo(
-    () => new Map(pokemon.map((entry) => [entry.id, entry])),
-    [pokemon],
-  )
-  const nearbyIds = useMemo(() => {
-    const windowSize = 5
-    const start = Math.max(1, Math.min(id - 2, MAX_POKEMON_ID - windowSize + 1))
-    return Array.from({ length: windowSize }, (_, index) => start + index).filter(
-      (entryId) => entryId <= MAX_POKEMON_ID,
-    )
-  }, [id])
-  const category =
-    species?.genera.find((entry) => entry.language.name === 'en')?.genus ??
-    'Unknown Pokemon'
-  const flavorText =
-    species?.flavor_text_entries
-      .find((entry) => entry.language.name === 'en')
-      ?.flavor_text.replace(/\f|\n/g, ' ') ?? ''
-  const weaknesses = detail
-    ? Array.from(
-        new Set(
-          detail.types.flatMap(({ type }) => [
-            ...(typeCache[type.name]?.damage_relations.double_damage_from.map(({ name }) => name) ?? []),
-          ]),
-        ),
-      )
-    : []
-  const heightInches = detail ? Math.round(detail.height * 3.93701) : 0
-  const heightFeet = Math.floor(heightInches / 12)
-  const remainingInches = heightInches % 12
-  const weightLbs = detail ? ((detail.weight / 10) * 2.20462).toFixed(1) : '0.0'
-  const officialArtwork =
-    detail?.sprites.other?.['official-artwork']?.front_default ??
-    detail?.sprites.front_default ??
-    (detail ? officialImage(detail.id) : '')
-
-  return (
-    <div
-      ref={backdropRef}
-      className={`arceus-modal-backdrop arceus-modal-${mode} fixed inset-0 z-50 flex items-center justify-center px-4 py-6`}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Pokemon detail"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) closeWithAnimation()
-      }}
-    >
-      <div
-        ref={modalRef}
-        className="arceus-pokedex max-h-[94svh] w-full max-w-7xl overflow-y-auto text-[#203447]"
-      >
-        <button
-          type="button"
-          className="arceus-close-button"
-          onClick={closeWithAnimation}
-          aria-label="Close detail"
-        >
-          <X className="h-5 w-5" />
-        </button>
-
-        {loading && (
-          <div className="arceus-loading">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Loading Pokemon profile
-          </div>
-        )}
-
-        {error && !loading && <div className="arceus-error">{error}</div>}
-
-        {detail && !loading && !error && (
-          <div className="arceus-shell">
-            <section className="arceus-main-page">
-              <div className="arceus-tabs" aria-hidden="true">
-                <span className="arceus-pokeball-tab" />
-              </div>
-
-              <header className="arceus-header">
-                <span className="arceus-number">No. {formatId(detail.id)}</span>
-                <h2>{titleCase(detail.name)}</h2>
-                <span className="arceus-category">{category}</span>
-                <div className="arceus-header-types">
-                  {detail.types.map(({ type }) => (
-                    <span key={type.name} className={`arceus-type-chip arceus-type-${type.name}`}>
-                      {titleCase(type.name)}
-                    </span>
-                  ))}
-                </div>
-              </header>
-
-              <div className="arceus-page-body">
-                <section className="arceus-photo-panel">
-                  <div className="arceus-photo-frame">
-                    <span className="arceus-photo-corner arceus-photo-corner-tl" />
-                    <span className="arceus-photo-corner arceus-photo-corner-br" />
-                    <img
-                      className="arceus-pokemon-art"
-                      src={officialArtwork}
-                      alt={titleCase(detail.name)}
-                      onError={(event) => {
-                        event.currentTarget.src = officialImage(detail.id)
-                      }}
-                    />
-                  </div>
-                  <div className="arceus-nav-row">
-                    <button
-                      type="button"
-                      className="arceus-nav-button"
-                      onClick={() => onNavigate(Math.max(1, id - 1))}
-                      aria-label="Previous Pokemon"
-                      disabled={id <= 1}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      PREV
-                    </button>
-                    <span>No. {formatId(detail.id)}</span>
-                    <button
-                      type="button"
-                      className="arceus-nav-button"
-                      onClick={() => onNavigate(Math.min(MAX_POKEMON_ID, id + 1))}
-                      aria-label="Next Pokemon"
-                      disabled={id >= MAX_POKEMON_ID}
-                    >
-                      NEXT
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </section>
-
-                <section className="arceus-info-panel">
-                  <div className="arceus-measure-list">
-                    <div>
-                      <span>Weight</span>
-                      <strong>{weightLbs} lbs.</strong>
-                    </div>
-                    <div>
-                      <span>Height</span>
-                      <strong>
-                        {heightFeet}'{String(remainingInches).padStart(2, '0')}"
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className="arceus-info-block">
-                    <h3>Abilities</h3>
-                    <p>{detail.abilities.map(({ ability }) => titleCase(ability.name)).join(', ')}</p>
-                  </div>
-
-                  <div className="arceus-info-block">
-                    <h3>Weaknesses</h3>
-                    <p>
-                      {weaknesses.length > 0
-                        ? weaknesses.map((typeName) => titleCase(typeName)).join(', ')
-                        : 'Loading type matchups'}
-                    </p>
-                  </div>
-
-                  <div className="arceus-info-block arceus-stats-block">
-                    <h3>Base Stats</h3>
-                    <div>
-                      {detail.stats.map(({ stat, base_stat }) => (
-                        <span key={stat.name}>
-                          {titleCase(stat.name)} <strong>{base_stat}</strong>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-              </div>
-
-              <footer className="arceus-research-note">
-                <p>{flavorText || 'No field notes are available for this Pokemon.'}</p>
-                <div>
-                  <span>Research Level</span>
-                  <strong>10</strong>
-                </div>
-              </footer>
-            </section>
-
-            <aside className="arceus-region-rail" aria-label="Nearby Pokemon">
-              <h3>PokeDex</h3>
-              <div className="arceus-rail-list">
-                {nearbyIds.map((railId) => {
-                  const railPokemon = pokemonById.get(railId) ?? detailCache[railId]
-                  const railName = railPokemon?.name ?? `Pokemon ${formatId(railId)}`
-                  const active = railId === id
-
-                  return (
-                    <button
-                      key={railId}
-                      type="button"
-                      className={`arceus-rail-item${active ? ' is-active' : ''}`}
-                      onClick={() => onNavigate(railId)}
-                      aria-current={active ? 'true' : undefined}
-                    >
-                      <img
-                        src={pixelSprite(railId)}
-                        alt=""
-                        aria-hidden="true"
-                        onError={(event) => {
-                          event.currentTarget.src =
-                            detailCache[railId]?.sprites.front_default ?? officialImage(railId)
-                        }}
-                      />
-                      <span>No. {formatId(railId)}</span>
-                      <strong>{titleCase(railName)}</strong>
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="arceus-rail-order">Ordered numerically</p>
-            </aside>
-          </div>
-        )}
-      </div>
-    </div>
-  )
 }
 
 function IntroSequence({
@@ -641,14 +104,9 @@ function IntroSequence({
     document.body.style.overflow = 'hidden'
     window.scrollTo({ top: 0 })
 
-    const audioStartEvents: Array<keyof WindowEventMap> = ['pointerdown', 'keydown']
-
     const onKeyDown = (event: KeyboardEvent) => {
       startTitleAudio()
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        ['+', '=', '-', '0'].includes(event.key)
-      ) {
+      if ((event.ctrlKey || event.metaKey) && ['+', '=', '-', '0'].includes(event.key)) {
         event.preventDefault()
         return
       }
@@ -679,11 +137,7 @@ function IntroSequence({
     overlay.addEventListener('pointerdown', onIntroPointerDown)
     window.addEventListener('wheel', preventZoomWheel, { passive: false })
     window.addEventListener('touchmove', preventTouchZoom, { passive: false })
-    audioStartEvents.forEach((eventName) => {
-      if (eventName !== 'keydown') {
-        window.addEventListener(eventName, startTitleAudio, { once: true })
-      }
-    })
+    window.addEventListener('pointerdown', startTitleAudio, { once: true })
     window.setTimeout(startTitleAudio, 0)
 
     if (reducedMotion) {
@@ -700,9 +154,8 @@ function IntroSequence({
     }
 
     const context = gsap.context(() => {
-      const timeline = gsap.timeline({ defaults: { ease: 'power3.out' } })
-
-      timeline
+      gsap
+        .timeline({ defaults: { ease: 'power3.out' } })
         .set(overlay, { autoAlpha: 1 })
         .fromTo(title, { y: 28, scale: 0.96, autoAlpha: 0 }, { y: 0, scale: 1, autoAlpha: 1, duration: 0.7 })
         .fromTo(prompt, { y: 12, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.35 }, '-=0.18')
@@ -740,12 +193,7 @@ function IntroSequence({
         <div className="intro-parchment-side" aria-hidden="true" />
         <div ref={titleRef} className="intro-title-content">
           <img className="intro-title-logo" src="/assets/intro-title.png" alt="Pokemon Legends Archives" />
-          <button
-            ref={promptRef}
-            type="button"
-            className="intro-press-enter"
-            onClick={completeIntro}
-          >
+          <button ref={promptRef} type="button" className="intro-press-enter" onClick={completeIntro}>
             <span className="intro-prompt-line">
               Press Enter
               <span className="intro-key-icon" aria-hidden="true">Enter</span>
@@ -786,6 +234,10 @@ function App() {
   const [typeFilter, setTypeFilter] = useState('all')
   const [typeMenuOpen, setTypeMenuOpen] = useState(false)
   const [typeFilterIds, setTypeFilterIds] = useState<Set<number> | null>(null)
+  const [regionFilter, setRegionFilter] = useState<RegionName>('all')
+  const [regionMenuOpen, setRegionMenuOpen] = useState(false)
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(() => readFavorites())
   const [searchTerm, setSearchTerm] = useState('')
   const [sortMode, setSortMode] = useState<SortMode>('id')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -801,6 +253,8 @@ function App() {
   const [error, setError] = useState('')
   const heroRef = useRef<HTMLElement | null>(null)
   const typeMenuRef = useRef<HTMLDivElement | null>(null)
+  const regionMenuRef = useRef<HTMLDivElement | null>(null)
+  const infiniteSentinelRef = useRef<HTMLDivElement | null>(null)
   const homeRevealPlayedRef = useRef(false)
 
   useEffect(() => {
@@ -838,30 +292,45 @@ function App() {
   }, [homeMode])
 
   useEffect(() => {
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...favoriteIds].sort((a, b) => a - b)))
+  }, [favoriteIds])
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      if (!typeMenuRef.current?.contains(event.target as Node)) {
+        setTypeMenuOpen(false)
+      }
+      if (!regionMenuRef.current?.contains(event.target as Node)) {
+        setRegionMenuOpen(false)
+      }
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setTypeMenuOpen(false)
+        setRegionMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [])
+
+  useEffect(() => {
     let cancelled = false
 
     async function loadInitialData() {
       setLoading(true)
       setError('')
       try {
-        const [listData, typesData] = await Promise.all([
-          getJson<{ results: NamedResource[] }>(`${API_BASE}/pokemon?limit=${MAX_POKEMON_ID}&offset=0`),
-          getJson<{ results: NamedResource[] }>(`${API_BASE}/type`),
-        ])
-
+        const [listData, typesData] = await Promise.all([getPokemonList(), getTypeList()])
         if (cancelled) return
-
-        setPokemon(
-          listData.results
-            .map((entry) => ({ id: idFromUrl(entry.url), name: entry.name }))
-            .filter((entry) => entry.id >= 1 && entry.id <= MAX_POKEMON_ID),
-        )
-        setTypeOptions(
-          typesData.results
-            .map(({ name }) => name)
-            .filter((name) => !['unknown', 'shadow'].includes(name))
-            .sort(),
-        )
+        setPokemon(listData)
+        setTypeOptions(typesData)
       } catch {
         if (!cancelled) {
           setError('Could not reach PokeAPI. Please check the connection and refresh.')
@@ -879,25 +348,6 @@ function App() {
   }, [])
 
   useEffect(() => {
-    function onPointerDown(event: PointerEvent) {
-      if (!typeMenuRef.current?.contains(event.target as Node)) {
-        setTypeMenuOpen(false)
-      }
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setTypeMenuOpen(false)
-    }
-
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [])
-
-  useEffect(() => {
     let cancelled = false
 
     async function loadTypeFilter() {
@@ -907,9 +357,8 @@ function App() {
       }
 
       try {
-        const data = typeCache[typeFilter] ?? (await getJson<TypeDetail>(`${API_BASE}/type/${typeFilter}`))
+        const data = typeCache[typeFilter] ?? (await getTypeDetail(typeFilter))
         if (cancelled) return
-
         if (!typeCache[typeFilter]) {
           setTypeCache((current) => ({ ...current, [typeFilter]: data }))
         }
@@ -917,7 +366,7 @@ function App() {
           new Set(
             data.pokemon
               .map(({ pokemon: typedPokemon }) => idFromUrl(typedPokemon.url))
-              .filter((id) => id >= 1 && id <= MAX_POKEMON_ID),
+              .filter((id) => id >= 1),
           ),
         )
       } catch {
@@ -943,20 +392,20 @@ function App() {
             ? formatId(entry.id) === normalizedSearch
             : String(entry.id).startsWith(normalizedSearch)
           : false
-        const matchesSearch =
-          !normalizedSearch ||
-          entry.name.includes(normalizedSearch) ||
-          idMatch
+        const matchesSearch = !normalizedSearch || entry.name.includes(normalizedSearch) || idMatch
         const matchesType = !typeFilterIds || typeFilterIds.has(entry.id)
-        return matchesSearch && matchesType
+        const matchesRegion = regionFilter === 'all' || getPokemonRegion(entry.id) === regionFilter
+        const matchesFavorite = !favoritesOnly || favoriteIds.has(entry.id)
+        return matchesSearch && matchesType && matchesRegion && matchesFavorite
       })
       .sort((a, b) => (sortMode === 'id' ? a.id - b.id : a.name.localeCompare(b.name)))
-  }, [pokemon, searchTerm, sortMode, typeFilterIds])
+  }, [favoriteIds, favoritesOnly, pokemon, regionFilter, searchTerm, sortMode, typeFilterIds])
 
   const visiblePokemon = useMemo(
     () => filteredPokemon.slice(0, visibleCount),
     [filteredPokemon, visibleCount],
   )
+  const hasMore = visibleCount < filteredPokemon.length
 
   useEffect(() => {
     let cancelled = false
@@ -969,7 +418,7 @@ function App() {
 
     async function loadVisibleDetails() {
       const entries = await Promise.allSettled(
-        missingIds.map(async (id) => [id, await getJson<PokemonDetail>(`${API_BASE}/pokemon/${id}`)] as const),
+        missingIds.map(async (id) => [id, await getPokemonDetail(id)] as const),
       )
 
       if (cancelled) return
@@ -992,6 +441,23 @@ function App() {
       cancelled = true
     }
   }, [detailCache, visiblePokemon])
+
+  useEffect(() => {
+    const sentinel = infiniteSentinelRef.current
+    if (!sentinel || !hasMore || loading) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((current) => Math.min(current + PAGE_SIZE, filteredPokemon.length))
+        }
+      },
+      { rootMargin: '520px 0px' },
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [filteredPokemon.length, hasMore, loading])
 
   useEffect(() => {
     if (!homeRevealReady) return
@@ -1027,217 +493,254 @@ function App() {
     setSelectedId(id)
   }, [])
 
-  const homeBackground =
-    homeMode === 'day' ? '/assets/route5-day.jpg' : '/assets/route5-night.jpg'
-  const selectedTypeLabel = typeFilter === 'all' ? 'All types' : titleCase(typeFilter)
+  const toggleFavorite = useCallback((id: number) => {
+    setFavoriteIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  const homeBackground = homeMode === 'day' ? '/assets/route5-day.jpg' : '/assets/route5-night.jpg'
+  const selectedTypeLabel = typeFilter === 'all' ? 'All Types' : titleCase(typeFilter)
+  const selectedRegionLabel = regionFilter === 'all' ? 'All Regions' : titleCase(regionFilter)
 
   return (
     <>
-    <main className={`app-shell app-shell-${homeMode}`}>
-      <section
-        ref={heroRef}
-        className={`route-home route-home-${homeMode}`}
-      >
-        <img
-          className="route-home-bg"
-          src={homeBackground}
-          alt=""
-          aria-hidden="true"
-        />
-        <div className="route-home-overlay" />
-        <div className="route-home-reveal">
-          <span className="route-home-logo-pop">
-            <img
-              className="route-home-logo"
-              src="/assets/pokedex-logo.png"
-              alt="Pokedex"
-            />
-          </span>
-          <a
-            href="#catalogue"
-            aria-label="Scroll to catalogue"
-            className="route-arrow"
-          >
-            <ChevronDown className="h-9 w-9" />
-          </a>
-        </div>
-        <div className="route-mode-panel">
-          <img
-            className="route-mode-pokemon"
-            src={homeMode === 'day' ? '/assets/charizard.gif' : '/assets/charizardx.gif'}
-            alt={homeMode === 'day' ? 'Charizard' : 'Mega Charizard X'}
-          />
-          <div className="route-mode-toggle">
-            <button
-              type="button"
-              className={homeMode === 'day' ? 'is-active' : ''}
-              onClick={() => setHomeMode('day')}
-              aria-pressed={homeMode === 'day'}
-            >
-              <Sun className="h-4 w-4" />
-              Day
-            </button>
-            <button
-              type="button"
-              className={homeMode === 'night' ? 'is-active' : ''}
-              onClick={() => setHomeMode('night')}
-              aria-pressed={homeMode === 'night'}
-            >
-              <Moon className="h-4 w-4" />
-              Night
-            </button>
+      <main className={`app-shell app-shell-${homeMode}`}>
+        <section ref={heroRef} className={`route-home route-home-${homeMode}`}>
+          <img className="route-home-bg" src={homeBackground} alt="" aria-hidden="true" />
+          <div className="route-home-overlay" />
+          <div className="route-home-reveal">
+            <span className="route-home-logo-pop">
+              <img className="route-home-logo" src="/assets/pokedex-logo.png" alt="Pokedex" />
+            </span>
+            <a href="#catalogue" aria-label="Scroll to catalogue" className="route-arrow">
+              <ChevronDown className="h-9 w-9" />
+            </a>
           </div>
-        </div>
-      </section>
-      <section id="catalogue" className={`catalogue-section catalogue-section-${homeMode}`}>
-        <div className="catalogue-inner mx-auto max-w-6xl">
-          <header className="catalogue-heading">
-            <span>The Pokemon Catalogue</span>
-            <h2>PokeDex</h2>
-          </header>
-
-          <div className="catalogue-toolbar">
-            <button
-              type="button"
-              className="catalogue-sort-button"
-              onClick={() => {
-                setVisibleCount(PAGE_SIZE)
-                setSortMode((current) => (current === 'id' ? 'name' : 'id'))
-              }}
-              aria-label={`Sort by ${sortMode === 'id' ? 'name' : 'ID'}`}
-            >
-              <ArrowDownWideNarrow className="h-4 w-4" />
-              {sortMode === 'id' ? 'ID' : 'Name'}
-            </button>
-
-            <label className="catalogue-search">
-              <input
-                placeholder="Enter Pokemon Name"
-                value={searchTerm}
-                onChange={(event) => {
-                  setVisibleCount(PAGE_SIZE)
-                  setSearchTerm(event.target.value)
-                }}
-              />
-              <Search className="catalogue-search-icon h-5 w-5" />
-            </label>
-
-            <div className="catalogue-filter" ref={typeMenuRef}>
+          <div className="route-mode-panel">
+            <img
+              className="route-mode-pokemon"
+              src={homeMode === 'day' ? '/assets/charizard.gif' : '/assets/charizardx.gif'}
+              alt={homeMode === 'day' ? 'Charizard' : 'Mega Charizard X'}
+            />
+            <div className="route-mode-toggle">
               <button
                 type="button"
-                className="catalogue-filter-trigger"
-                aria-haspopup="listbox"
-                aria-expanded={typeMenuOpen}
-                onClick={() => setTypeMenuOpen((current) => !current)}
+                className={homeMode === 'day' ? 'is-active' : ''}
+                onClick={() => setHomeMode('day')}
+                aria-pressed={homeMode === 'day'}
               >
-                <SlidersHorizontal className="h-5 w-5" />
-                <span>{selectedTypeLabel}</span>
-                <ChevronDown className={`h-4 w-4${typeMenuOpen ? ' is-open' : ''}`} />
+                <Sun className="h-4 w-4" />
+                Day
               </button>
-
-              {typeMenuOpen && (
-                <div className="catalogue-filter-menu" role="listbox" aria-label="Filter Pokemon by type">
-                  {['all', ...typeOptions].map((typeName) => {
-                    const active = typeFilter === typeName
-                    return (
-                      <button
-                        key={typeName}
-                        type="button"
-                        className={active ? 'is-active' : ''}
-                        role="option"
-                        aria-selected={active}
-                        onClick={() => {
-                          setVisibleCount(PAGE_SIZE)
-                          setTypeFilter(typeName)
-                          setTypeMenuOpen(false)
-                        }}
-                      >
-                        <span>{typeName === 'all' ? 'All types' : titleCase(typeName)}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
+              <button
+                type="button"
+                className={homeMode === 'night' ? 'is-active' : ''}
+                onClick={() => setHomeMode('night')}
+                aria-pressed={homeMode === 'night'}
+              >
+                <Moon className="h-4 w-4" />
+                Night
+              </button>
             </div>
           </div>
+        </section>
 
-          <p className="catalogue-count">
-            Showing {Math.min(visiblePokemon.length, filteredPokemon.length)} of {filteredPokemon.length}
-          </p>
+        <section id="catalogue" className={`catalogue-section catalogue-section-${homeMode}`}>
+          <div className="catalogue-inner mx-auto max-w-6xl">
+            <header className="catalogue-heading">
+              <span>The Pokemon Catalogue</span>
+              <h2>PokeDex</h2>
+            </header>
 
-          {loading && (
-            <div className="catalogue-state">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Loading Pokemon catalogue
-            </div>
-          )}
+            <div className="catalogue-toolbar">
+              <button
+                type="button"
+                className="catalogue-sort-button"
+                onClick={() => {
+                  setVisibleCount(PAGE_SIZE)
+                  setSortMode((current) => (current === 'id' ? 'name' : 'id'))
+                }}
+                aria-label={`Sort by ${sortMode === 'id' ? 'name' : 'ID'}`}
+              >
+                <ArrowDownWideNarrow className="h-4 w-4" />
+                {sortMode === 'id' ? 'ID' : 'Name'}
+              </button>
 
-          {error && !loading && (
-            <div className="catalogue-state catalogue-state-error">
-              {error}
-            </div>
-          )}
+              <label className="catalogue-search">
+                <input
+                  placeholder="Enter Pokemon Name"
+                  value={searchTerm}
+                  onChange={(event) => {
+                    setVisibleCount(PAGE_SIZE)
+                    setSearchTerm(event.target.value)
+                  }}
+                />
+                <Search className="catalogue-search-icon h-5 w-5" />
+              </label>
 
-          {!loading && !error && (
-            <>
-              <div className="catalogue-grid">
-                {visiblePokemon.map((entry) => (
-                  <PokemonCard
-                    key={entry.id}
-                    item={entry}
-                    detail={detailCache[entry.id]}
-                    onOpen={openDetail}
-                  />
-                ))}
+              <button
+                type="button"
+                className={`catalogue-favorites-filter${favoritesOnly ? ' is-active' : ''}`}
+                onClick={() => {
+                  setVisibleCount(PAGE_SIZE)
+                  setFavoritesOnly((current) => !current)
+                }}
+                aria-pressed={favoritesOnly}
+              >
+                <Star className="h-4 w-4" />
+                Favorites
+              </button>
+
+              <div className="catalogue-filter" ref={typeMenuRef}>
+                <button
+                  type="button"
+                  className="catalogue-filter-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded={typeMenuOpen}
+                  onClick={() => {
+                    setRegionMenuOpen(false)
+                    setTypeMenuOpen((current) => !current)
+                  }}
+                >
+                  <SlidersHorizontal className="h-5 w-5" />
+                  <span>{selectedTypeLabel}</span>
+                  <ChevronDown className={`h-4 w-4${typeMenuOpen ? ' is-open' : ''}`} />
+                </button>
+
+                {typeMenuOpen ? (
+                  <div className="catalogue-filter-menu" role="listbox" aria-label="Filter Pokemon by type">
+                    {['all', ...typeOptions].map((typeName) => {
+                      const active = typeFilter === typeName
+                      return (
+                        <button
+                          key={typeName}
+                          type="button"
+                          className={active ? 'is-active' : ''}
+                          role="option"
+                          aria-selected={active}
+                          onClick={() => {
+                            setVisibleCount(PAGE_SIZE)
+                            setTypeFilter(typeName)
+                            setTypeMenuOpen(false)
+                          }}
+                        >
+                          <span>{typeName === 'all' ? 'All Types' : titleCase(typeName)}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : null}
               </div>
 
-              {filteredPokemon.length === 0 && (
-                <div className="catalogue-empty">
-                  <h3 className="text-2xl font-black">No Pokemon found</h3>
-                  <p>Try a different name, ID, or type filter.</p>
-                </div>
-              )}
+              <div className="catalogue-filter" ref={regionMenuRef}>
+                <button
+                  type="button"
+                  className="catalogue-filter-trigger"
+                  aria-haspopup="listbox"
+                  aria-expanded={regionMenuOpen}
+                  onClick={() => {
+                    setTypeMenuOpen(false)
+                    setRegionMenuOpen((current) => !current)
+                  }}
+                >
+                  <MapPin className="h-5 w-5" />
+                  <span>{selectedRegionLabel}</span>
+                  <ChevronDown className={`h-4 w-4${regionMenuOpen ? ' is-open' : ''}`} />
+                </button>
 
-              {visibleCount < filteredPokemon.length && (
-                <div className="mt-10 flex justify-center">
-                  <button
-                    type="button"
-                    className="catalogue-load-more"
-                    onClick={() => setVisibleCount((current) => current + PAGE_SIZE)}
-                  >
-                    Load More
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
+                {regionMenuOpen ? (
+                  <div className="catalogue-filter-menu" role="listbox" aria-label="Filter Pokemon by origin region">
+                    {(['all', ...REGION_RANGES.map((region) => region.name)] as RegionName[]).map((regionName) => {
+                      const active = regionFilter === regionName
+                      return (
+                        <button
+                          key={regionName}
+                          type="button"
+                          className={active ? 'is-active' : ''}
+                          role="option"
+                          aria-selected={active}
+                          onClick={() => {
+                            setVisibleCount(PAGE_SIZE)
+                            setRegionFilter(regionName)
+                            setRegionMenuOpen(false)
+                          }}
+                        >
+                          <span>{regionName === 'all' ? 'All Regions' : titleCase(regionName)}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
+            </div>
 
-      <footer className="site-footer">
-        Built with PokeAPI data and official Pokemon artwork paths. (SeanCordovaGit)
-      </footer>
+            <p className="catalogue-count">
+              Showing {Math.min(visiblePokemon.length, filteredPokemon.length)} of {filteredPokemon.length}
+            </p>
 
-      {selectedId !== null && (
-        <DetailModal
-          id={selectedId}
-          mode={homeMode}
-          onClose={() => setSelectedId(null)}
-          onNavigate={(nextId) => setSelectedId(nextId)}
-          pokemon={pokemon}
-          detailCache={detailCache}
-          setDetailCache={setDetailCache}
-          typeCache={typeCache}
-          setTypeCache={setTypeCache}
+            {error && !loading ? (
+              <div className="catalogue-state catalogue-state-error">
+                {error}
+              </div>
+            ) : null}
+
+            {!error ? (
+              <>
+                <PokemonList
+                  pokemon={visiblePokemon}
+                  detailCache={detailCache}
+                  favoriteIds={favoriteIds}
+                  loading={loading}
+                  hasMore={hasMore}
+                  sentinelRef={infiniteSentinelRef}
+                  onOpen={openDetail}
+                  onToggleFavorite={toggleFavorite}
+                />
+
+                {!loading && filteredPokemon.length === 0 ? (
+                  <div className="catalogue-empty">
+                    <h3 className="text-2xl font-black">No Pokemon found</h3>
+                    <p>Try a different name, ID, type, region, or favorites filter.</p>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </section>
+
+        <footer className="site-footer">
+          Built with PokeAPI data and official Pokemon artwork paths. (SeanCordovaGit)
+        </footer>
+
+        {selectedId !== null ? (
+          <PokemonModal
+            id={selectedId}
+            mode={homeMode}
+            onClose={() => setSelectedId(null)}
+            onNavigate={(nextId) => setSelectedId(nextId)}
+            pokemon={pokemon}
+            detailCache={detailCache}
+            setDetailCache={setDetailCache}
+            typeCache={typeCache}
+            setTypeCache={setTypeCache}
+            favoriteIds={favoriteIds}
+            onToggleFavorite={toggleFavorite}
+          />
+        ) : null}
+      </main>
+      {!introComplete ? (
+        <IntroSequence
+          onExitStart={() => setHomeRevealReady(true)}
+          onComplete={() => setIntroComplete(true)}
         />
-      )}
-    </main>
-    {!introComplete && (
-      <IntroSequence
-        onExitStart={() => setHomeRevealReady(true)}
-        onComplete={() => setIntroComplete(true)}
-      />
-    )}
+      ) : null}
     </>
   )
 }
