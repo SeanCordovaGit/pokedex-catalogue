@@ -471,10 +471,10 @@ button:disabled {
 .intro-title-content {
   position: absolute;
   z-index: 3;
-  right: clamp(28px, 8vw, 140px);
-  top: 50%;
+  right: clamp(36px, 7vw, 120px);
+  top: 46%;
   display: grid;
-  width: min(540px, 42vw);
+  width: min(470px, 36vw);
   justify-items: center;
   transform: translateY(-50%);
   text-align: center;
@@ -482,7 +482,7 @@ button:disabled {
 
 .intro-title-logo {
   display: block;
-  width: min(560px, 43vw);
+  width: min(470px, 36vw);
   max-width: 100%;
   height: auto;
   object-fit: contain;
@@ -491,7 +491,7 @@ button:disabled {
 
 .intro-press-enter {
   position: relative;
-  margin-top: clamp(44px, 7vw, 86px);
+  margin-top: clamp(18px, 3vw, 34px);
   min-width: min(360px, 72vw);
   border: 0;
   border-top: 1px solid rgba(58, 65, 78, 0.22);
@@ -1314,11 +1314,12 @@ button:disabled {
     left: 50%;
     right: auto;
     width: min(680px, 90vw);
-    transform: translate(-50%, -38%);
+    top: 50%;
+    transform: translate(-50%, -42%);
   }
 
   .intro-title-logo {
-    width: min(640px, 88vw);
+    width: min(560px, 86vw);
   }
 }
 
