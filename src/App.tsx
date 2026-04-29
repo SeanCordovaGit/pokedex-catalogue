@@ -612,7 +612,7 @@ function App() {
 
               <label className="catalogue-search">
                 <input
-                  placeholder="Enter Pokemon Name"
+                  placeholder="Search by Name or ID"
                   value={searchTerm}
                   onChange={(event) => {
                     setVisibleCount(PAGE_SIZE)

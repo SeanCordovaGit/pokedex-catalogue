@@ -275,6 +275,7 @@ export const PokemonModal = memo(function PokemonModal({
     detail?.sprites.other?.['official-artwork']?.front_default ??
     detail?.sprites.front_default ??
     (detail ? officialImage(detail.id) : '')
+  const fallbackArtwork = detail ? officialImage(detail.id) : ''
   const activePokemon = detail ? pokemonById.get(detail.id) : null
   const statTotal = detail?.stats.reduce((total, entry) => total + entry.base_stat, 0) ?? 0
 
@@ -355,7 +356,11 @@ export const PokemonModal = memo(function PokemonModal({
                       alt={titleCase(detail.name)}
                       loading="lazy"
                       onError={(event) => {
-                        event.currentTarget.src = officialImage(detail.id)
+                        if (fallbackArtwork && event.currentTarget.src !== fallbackArtwork) {
+                          event.currentTarget.src = fallbackArtwork
+                          return
+                        }
+                        event.currentTarget.onerror = null
                       }}
                     />
                   </div>
