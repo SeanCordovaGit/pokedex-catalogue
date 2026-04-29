@@ -22,7 +22,7 @@ gsap.registerPlugin(ScrollTrigger)
 const MAX_POKEMON_ID = 1010
 const PAGE_SIZE = 10
 const API_BASE = 'https://pokeapi.co/api/v2'
-const HOME_MODE_STORAGE_KEY = 'pokedex-home-mode'
+const HOME_MODE_STORAGE_KEY = 'pokedex-home-mode-v2'
 
 type SortMode = 'id' | 'name'
 type HomeMode = 'day' | 'night'
