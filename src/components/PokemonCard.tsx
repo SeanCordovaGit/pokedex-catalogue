@@ -40,7 +40,9 @@ export const PokemonCard = memo(function PokemonCard({
   onToggleFavorite: (id: number) => void
 }) {
   const fallback =
-    detail?.sprites.other?.['official-artwork']?.front_default ?? detail?.sprites.front_default ?? ''
+    detail?.sprites.other?.['official-artwork']?.front_default ??
+    detail?.sprites.front_default ??
+    ''
   const primaryType = detail?.types[0]?.type.name ?? 'normal'
   const heightMeters = detail ? `${Number((detail.height / 10).toFixed(1))} M` : '--'
   const weightKg = detail ? `${Number((detail.weight / 10).toFixed(1))} Kg` : '--'
@@ -54,7 +56,11 @@ export const PokemonCard = memo(function PokemonCard({
           event.stopPropagation()
           onToggleFavorite(item.id)
         }}
-        aria-label={isFavorite ? `Remove ${titleCase(item.name)} from favorites` : `Favorite ${titleCase(item.name)}`}
+        aria-label={
+          isFavorite
+            ? `Remove ${titleCase(item.name)} from favorites`
+            : `Favorite ${titleCase(item.name)}`
+        }
         aria-pressed={isFavorite}
       >
         <Star className="h-5 w-5" />
@@ -77,7 +83,7 @@ export const PokemonCard = memo(function PokemonCard({
             src={officialImage(item.id)}
             alt={titleCase(item.name)}
             loading="lazy"
-          onError={(event) => {
+            onError={(event) => {
               // Official artwork can be missing for edge cases, so fall back to PokeAPI sprites.
               if (fallback && event.currentTarget.src !== fallback) {
                 event.currentTarget.src = fallback

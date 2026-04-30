@@ -197,9 +197,24 @@ function IntroSequence({
       gsap
         .timeline({ defaults: { ease: 'power3.out' } })
         .set(overlay, { autoAlpha: 1 })
-        .fromTo(title, { y: 28, scale: 0.96, autoAlpha: 0 }, { y: 0, scale: 1, autoAlpha: 1, duration: 0.7 })
-        .fromTo(prompt, { y: 12, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.35 }, '-=0.18')
-        .to(prompt, { autoAlpha: 0.38, duration: 0.85, repeat: -1, yoyo: true, ease: 'sine.inOut' })
+        .fromTo(
+          title,
+          { y: 28, scale: 0.96, autoAlpha: 0 },
+          { y: 0, scale: 1, autoAlpha: 1, duration: 0.7 },
+        )
+        .fromTo(
+          prompt,
+          { y: 12, autoAlpha: 0 },
+          { y: 0, autoAlpha: 1, duration: 0.35 },
+          '-=0.18',
+        )
+        .to(prompt, {
+          autoAlpha: 0.38,
+          duration: 0.85,
+          ease: 'sine.inOut',
+          repeat: -1,
+          yoyo: true,
+        })
     }, overlay)
 
     return () => {
@@ -225,13 +240,29 @@ function IntroSequence({
 
   return (
     <div ref={overlayRef} className="intro-overlay" aria-label="Pokedex title screen">
-      <audio ref={audioRef} src="/assets/title-screen-audio.mp3" loop preload="auto" autoPlay playsInline />
+      <audio
+        ref={audioRef}
+        src="/assets/title-screen-audio.mp3"
+        loop
+        preload="auto"
+        autoPlay
+        playsInline
+      />
       <div className="intro-title-screen">
         <div className="intro-scenic-side" aria-hidden="true" />
         <div className="intro-parchment-side" aria-hidden="true" />
         <div ref={titleRef} className="intro-title-content">
-          <img className="intro-title-logo" src="/assets/intro-title.png" alt="Pokemon Legends Archives" />
-          <button ref={promptRef} type="button" className="intro-press-enter" onClick={completeIntro}>
+          <img
+            className="intro-title-logo"
+            src="/assets/intro-title.png"
+            alt="Pokemon Legends Archives"
+          />
+          <button
+            ref={promptRef}
+            type="button"
+            className="intro-press-enter"
+            onClick={completeIntro}
+          >
             <span className="intro-prompt-line">
               Press Enter
               <span className="intro-key-icon" aria-hidden="true">Enter</span>
@@ -301,7 +332,8 @@ function App() {
   }, [homeMode])
 
   useEffect(() => {
-    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...favoriteIds].sort((a, b) => a - b)))
+    const sortedFavoriteIds = [...favoriteIds].sort((firstId, secondId) => firstId - secondId)
+    window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(sortedFavoriteIds))
   }, [favoriteIds])
 
   useEffect(() => {
@@ -416,7 +448,12 @@ function App() {
         const matchesType = !typeFilterIds || typeFilterIds.has(entry.id)
         const matchesRegion = regionFilter === 'all' || getPokemonRegion(entry.id) === regionFilter
         const matchesFavorite = !favoritesOnly || favoriteIds.has(entry.id)
-        return matchesSearch(entry, normalizedSearch) && matchesType && matchesRegion && matchesFavorite
+        return (
+          matchesSearch(entry, normalizedSearch) &&
+          matchesType &&
+          matchesRegion &&
+          matchesFavorite
+        )
       })
       .sort((a, b) => (sortMode === 'id' ? a.id - b.id : a.name.localeCompare(b.name)))
   }, [favoriteIds, favoritesOnly, pokemon, regionFilter, searchTerm, sortMode, typeFilterIds])
@@ -652,7 +689,11 @@ function App() {
                 </button>
 
                 {typeMenuOpen ? (
-                  <div className="catalogue-filter-menu" role="listbox" aria-label="Filter Pokemon by type">
+                  <div
+                    className="catalogue-filter-menu"
+                    role="listbox"
+                    aria-label="Filter Pokemon by type"
+                  >
                     {['all', ...typeOptions].map((typeName) => {
                       const active = typeFilter === typeName
                       return (
@@ -693,33 +734,42 @@ function App() {
                 </button>
 
                 {regionMenuOpen ? (
-                  <div className="catalogue-filter-menu" role="listbox" aria-label="Filter Pokemon by origin region">
-                    {(['all', ...REGION_RANGES.map((region) => region.name)] as RegionName[]).map((regionName) => {
-                      const active = regionFilter === regionName
-                      return (
-                        <button
-                          key={regionName}
-                          type="button"
-                          className={active ? 'is-active' : ''}
-                          role="option"
-                          aria-selected={active}
-                          onClick={() => {
-                            setVisibleCount(PAGE_SIZE)
-                            setRegionFilter(regionName)
-                            setRegionMenuOpen(false)
-                          }}
-                        >
-                          <span>{regionName === 'all' ? 'All Regions' : titleCase(regionName)}</span>
-                        </button>
-                      )
-                    })}
+                  <div
+                    className="catalogue-filter-menu"
+                    role="listbox"
+                    aria-label="Filter Pokemon by origin region"
+                  >
+                    {(['all', ...REGION_RANGES.map((region) => region.name)] as RegionName[]).map(
+                      (regionName) => {
+                        const active = regionFilter === regionName
+                        return (
+                          <button
+                            key={regionName}
+                            type="button"
+                            className={active ? 'is-active' : ''}
+                            role="option"
+                            aria-selected={active}
+                            onClick={() => {
+                              setVisibleCount(PAGE_SIZE)
+                              setRegionFilter(regionName)
+                              setRegionMenuOpen(false)
+                            }}
+                          >
+                            <span>
+                              {regionName === 'all' ? 'All Regions' : titleCase(regionName)}
+                            </span>
+                          </button>
+                        )
+                      },
+                    )}
                   </div>
                 ) : null}
               </div>
             </div>
 
             <p className="catalogue-count">
-              Showing {Math.min(visiblePokemon.length, filteredPokemon.length)} of {filteredPokemon.length}
+              Showing {Math.min(visiblePokemon.length, filteredPokemon.length)} of{' '}
+              {filteredPokemon.length}
             </p>
 
             {error && !loading ? (

@@ -102,14 +102,34 @@ button:disabled {
   inset: 0;
   z-index: 1;
   background:
-    linear-gradient(to bottom, rgba(245, 239, 216, 0.16), rgba(245, 239, 216, 0.08) 48%, rgba(143, 131, 95, 0.46) 100%),
-    radial-gradient(circle at 50% 28%, transparent 0 18%, rgba(0, 0, 0, 0.16) 58%, rgba(0, 0, 0, 0.44) 100%);
+    linear-gradient(
+      to bottom,
+      rgba(245, 239, 216, 0.16),
+      rgba(245, 239, 216, 0.08) 48%,
+      rgba(143, 131, 95, 0.46) 100%
+    ),
+    radial-gradient(
+      circle at 50% 28%,
+      transparent 0 18%,
+      rgba(0, 0, 0, 0.16) 58%,
+      rgba(0, 0, 0, 0.44) 100%
+    );
 }
 
 .route-home-night .route-home-overlay {
   background:
-    linear-gradient(to bottom, rgba(8, 26, 42, 0.24), rgba(8, 26, 42, 0.22) 52%, rgba(16, 26, 35, 0.64) 100%),
-    radial-gradient(circle at 50% 22%, transparent 0 18%, rgba(0, 0, 0, 0.16) 52%, rgba(0, 0, 0, 0.5) 100%);
+    linear-gradient(
+      to bottom,
+      rgba(8, 26, 42, 0.24),
+      rgba(8, 26, 42, 0.22) 52%,
+      rgba(16, 26, 35, 0.64) 100%
+    ),
+    radial-gradient(
+      circle at 50% 22%,
+      transparent 0 18%,
+      rgba(0, 0, 0, 0.16) 52%,
+      rgba(0, 0, 0, 0.5) 100%
+    );
 }
 
 .route-home::before,
@@ -136,7 +156,12 @@ button:disabled {
 
 .route-home::after {
   background:
-    radial-gradient(ellipse at 50% 46%, transparent 0 44%, rgba(20, 31, 30, 0.2) 68%, rgba(9, 16, 22, 0.46) 100%),
+    radial-gradient(
+      ellipse at 50% 46%,
+      transparent 0 44%,
+      rgba(20, 31, 30, 0.2) 68%,
+      rgba(9, 16, 22, 0.46) 100%
+    ),
     linear-gradient(to bottom, rgba(255, 251, 232, 0.18), transparent 24%),
     linear-gradient(to top, rgba(98, 76, 48, 0.34), transparent 24%),
     linear-gradient(to right, rgba(17, 31, 34, 0.4), transparent 18% 82%, rgba(17, 31, 34, 0.4));
@@ -144,7 +169,12 @@ button:disabled {
 
 .route-home-night::after {
   background:
-    radial-gradient(ellipse at 50% 46%, transparent 0 42%, rgba(6, 15, 24, 0.32) 66%, rgba(3, 8, 14, 0.64) 100%),
+    radial-gradient(
+      ellipse at 50% 46%,
+      transparent 0 42%,
+      rgba(6, 15, 24, 0.32) 66%,
+      rgba(3, 8, 14, 0.64) 100%
+    ),
     linear-gradient(to bottom, rgba(121, 170, 199, 0.12), transparent 26%),
     linear-gradient(to top, rgba(4, 10, 16, 0.48), transparent 26%),
     linear-gradient(to right, rgba(5, 12, 20, 0.56), transparent 18% 82%, rgba(5, 12, 20, 0.56));
@@ -178,7 +208,12 @@ button:disabled {
 
 .route-home-reveal::before {
   background:
-    radial-gradient(ellipse at 50% 50%, rgba(255, 245, 185, 0.42), rgba(255, 227, 118, 0.16) 38%, transparent 68%),
+    radial-gradient(
+      ellipse at 50% 50%,
+      rgba(255, 245, 185, 0.42),
+      rgba(255, 227, 118, 0.16) 38%,
+      transparent 68%
+    ),
     radial-gradient(ellipse at 50% 66%, rgba(39, 74, 69, 0.32), transparent 62%);
   filter: blur(18px) saturate(1.08);
   mix-blend-mode: screen;
@@ -198,7 +233,12 @@ button:disabled {
 
 .route-home-night .route-home-reveal::before {
   background:
-    radial-gradient(ellipse at 50% 50%, rgba(126, 202, 218, 0.4), rgba(63, 118, 147, 0.2) 40%, transparent 70%),
+    radial-gradient(
+      ellipse at 50% 50%,
+      rgba(126, 202, 218, 0.4),
+      rgba(63, 118, 147, 0.2) 40%,
+      transparent 70%
+    ),
     radial-gradient(ellipse at 50% 68%, rgba(6, 18, 28, 0.52), transparent 62%);
   opacity: 0.68;
 }
@@ -405,7 +445,14 @@ button:disabled {
   z-index: 2;
   pointer-events: none;
   background:
-    linear-gradient(90deg, transparent 0 43%, rgba(245, 239, 225, 0.16) 49%, rgba(245, 239, 225, 0.78) 58%, rgba(245, 239, 225, 0.98) 68%, rgba(245, 239, 225, 0.98) 100%),
+    linear-gradient(
+      90deg,
+      transparent 0 43%,
+      rgba(245, 239, 225, 0.16) 49%,
+      rgba(245, 239, 225, 0.78) 58%,
+      rgba(245, 239, 225, 0.98) 68%,
+      rgba(245, 239, 225, 0.98) 100%
+    ),
     radial-gradient(ellipse at 54% 50%, rgba(255, 255, 255, 0.38), transparent 18%);
   backdrop-filter: blur(0.8px);
 }
@@ -413,7 +460,12 @@ button:disabled {
 .intro-scenic-side {
   position: relative;
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0) 54%, rgba(243, 234, 215, 0.2) 78%, rgba(243, 234, 215, 0.48) 100%),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 54%,
+      rgba(243, 234, 215, 0.2) 78%,
+      rgba(243, 234, 215, 0.48) 100%
+    ),
     url("/assets/introfinal.gif") center / cover no-repeat;
   filter: saturate(0.94) contrast(0.96);
   transform: scale(1.012);
@@ -425,7 +477,12 @@ button:disabled {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(255, 244, 216, 0.06), rgba(255, 244, 216, 0.24) 70%, rgba(246, 240, 226, 0.72) 100%),
+    linear-gradient(
+      90deg,
+      rgba(255, 244, 216, 0.06),
+      rgba(255, 244, 216, 0.24) 70%,
+      rgba(246, 240, 226, 0.72) 100%
+    ),
     radial-gradient(circle at 18% 88%, rgba(255, 116, 172, 0.22), transparent 18%),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.13), rgba(255, 244, 216, 0.2));
 }
@@ -449,8 +506,20 @@ button:disabled {
   background-image:
     radial-gradient(rgba(73, 49, 21, 0.28) 0.8px, transparent 1.2px),
     radial-gradient(rgba(255, 255, 255, 0.38) 0.8px, transparent 1.2px),
-    linear-gradient(30deg, rgba(83, 57, 28, 0.13) 12%, transparent 12%, transparent 88%, rgba(83, 57, 28, 0.11) 88%),
-    linear-gradient(150deg, rgba(83, 57, 28, 0.1) 12%, transparent 12%, transparent 88%, rgba(83, 57, 28, 0.08) 88%);
+    linear-gradient(
+      30deg,
+      rgba(83, 57, 28, 0.13) 12%,
+      transparent 12%,
+      transparent 88%,
+      rgba(83, 57, 28, 0.11) 88%
+    ),
+    linear-gradient(
+      150deg,
+      rgba(83, 57, 28, 0.1) 12%,
+      transparent 12%,
+      transparent 88%,
+      rgba(83, 57, 28, 0.08) 88%
+    );
   background-position: 0 0, 3px 4px, 0 0, 0 0;
   background-size: 7px 7px, 9px 9px, 38px 38px, 54px 54px;
   mix-blend-mode: multiply;
@@ -1608,14 +1677,24 @@ button:disabled {
 
   .intro-scenic-side::after {
     background:
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.16), rgba(243, 234, 215, 0.58) 56%, rgba(243, 234, 215, 0.92));
+      linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.16),
+        rgba(243, 234, 215, 0.58) 56%,
+        rgba(243, 234, 215, 0.92)
+      );
   }
 
   .intro-parchment-side {
     position: absolute;
     inset: auto 0 0 0;
     height: 58%;
-    background: linear-gradient(to bottom, rgba(243, 234, 215, 0), rgba(243, 234, 215, 0.76) 28%, #f7f1e4 100%);
+    background: linear-gradient(
+      to bottom,
+      rgba(243, 234, 215, 0),
+      rgba(243, 234, 215, 0.76) 28%,
+      #f7f1e4 100%
+    );
   }
 
   .intro-title-content {
@@ -1715,7 +1794,12 @@ button:disabled {
     radial-gradient(circle at 72% 64%, rgba(118, 91, 54, 0.28), transparent 32%),
     radial-gradient(circle at 34% 100%, rgba(53, 82, 78, 0.42), transparent 34%),
     repeating-linear-gradient(98deg, rgba(255, 252, 228, 0.045) 0 2px, transparent 2px 18px),
-    linear-gradient(180deg, rgba(118, 123, 86, 0.88), rgba(132, 117, 78, 0.96) 42%, rgba(76, 92, 80, 0.98)),
+    linear-gradient(
+      180deg,
+      rgba(118, 123, 86, 0.88),
+      rgba(132, 117, 78, 0.96) 42%,
+      rgba(76, 92, 80, 0.98)
+    ),
     var(--catalogue-bg);
 }
 
@@ -1726,7 +1810,12 @@ button:disabled {
     radial-gradient(circle at 72% 64%, rgba(84, 70, 48, 0.2), transparent 32%),
     radial-gradient(circle at 34% 100%, rgba(19, 48, 56, 0.52), transparent 34%),
     repeating-linear-gradient(98deg, rgba(255, 251, 232, 0.032) 0 2px, transparent 2px 18px),
-    linear-gradient(180deg, rgba(20, 42, 47, 0.94), rgba(19, 33, 39, 0.98) 42%, rgba(8, 20, 27, 0.99)),
+    linear-gradient(
+      180deg,
+      rgba(20, 42, 47, 0.94),
+      rgba(19, 33, 39, 0.98) 42%,
+      rgba(8, 20, 27, 0.99)
+    ),
     var(--catalogue-bg);
 }
 
@@ -1798,7 +1887,12 @@ button:disabled {
   border: 2px solid rgba(255, 251, 232, 0.24);
   border-radius: 7px;
   background:
-    linear-gradient(90deg, rgba(18, 33, 46, 0.98), rgba(38, 66, 86, 0.96) 52%, rgba(18, 33, 46, 0.98)),
+    linear-gradient(
+      90deg,
+      rgba(18, 33, 46, 0.98),
+      rgba(38, 66, 86, 0.96) 52%,
+      rgba(18, 33, 46, 0.98)
+    ),
     #20364c;
   box-shadow:
     inset 0 1px 0 rgba(255, 251, 232, 0.18),
@@ -2062,7 +2156,11 @@ button:disabled {
   border: 4px solid #20364c;
   border-radius: 10px;
   background:
-    radial-gradient(circle at 72% 46%, color-mix(in srgb, var(--type-ink, #294c66), transparent 82%), transparent 30%),
+    radial-gradient(
+      circle at 72% 46%,
+      color-mix(in srgb, var(--type-ink, #294c66), transparent 82%),
+      transparent 30%
+    ),
     linear-gradient(105deg, rgba(255, 255, 255, 0.28), transparent 44%),
     #eee8c9;
   box-shadow:
@@ -2304,7 +2402,12 @@ button:disabled {
   display: inline-block;
   overflow: hidden;
   border-radius: 4px;
-  background: linear-gradient(90deg, rgba(35, 61, 85, 0.16), rgba(255, 255, 255, 0.46), rgba(35, 61, 85, 0.16));
+  background: linear-gradient(
+    90deg,
+    rgba(35, 61, 85, 0.16),
+    rgba(255, 255, 255, 0.46),
+    rgba(35, 61, 85, 0.16)
+  );
   background-size: 220% 100%;
   animation: catalogue-skeleton-shimmer 1.35s ease-in-out infinite;
 }

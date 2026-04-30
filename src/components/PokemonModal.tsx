@@ -72,7 +72,10 @@ function getStatWidth(value: number) {
  * @param typeCache - Cached PokeAPI type details.
  * @returns Weakness groups sorted from highest to lowest multiplier.
  */
-function getWeaknessGroups(defendingTypes: string[], typeCache: Record<string, TypeDetail>): WeaknessGroup[] {
+function getWeaknessGroups(
+  defendingTypes: string[],
+  typeCache: Record<string, TypeDetail>,
+): WeaknessGroup[] {
   const attackMultipliers = new Map<string, number>()
 
   defendingTypes.forEach((defendingType) => {
@@ -92,7 +95,10 @@ function getWeaknessGroups(defendingTypes: string[], typeCache: Record<string, T
 
   return [...attackMultipliers.entries()]
     .filter(([, multiplier]) => multiplier > 1)
-    .sort(([typeA, multiplierA], [typeB, multiplierB]) => multiplierB - multiplierA || typeA.localeCompare(typeB))
+    .sort(
+      ([typeA, multiplierA], [typeB, multiplierB]) =>
+        multiplierB - multiplierA || typeA.localeCompare(typeB),
+    )
     .reduce<WeaknessGroup[]>((groups, [typeName, multiplier]) => {
       const existingGroup = groups.find((group) => group.multiplier === multiplier)
       if (existingGroup) {
@@ -199,12 +205,17 @@ export const PokemonModal = memo(function PokemonModal({
 
         if (missingTypes.length > 0) {
           const loadedTypes = await Promise.allSettled(
-            missingTypes.map(async (typeName) => [typeName, await getTypeDetail(typeName)] as const),
+            missingTypes.map(
+              async (typeName) => [typeName, await getTypeDetail(typeName)] as const,
+            ),
           )
 
           if (!cancelled) {
             const fulfilledTypes = loadedTypes
-              .filter((result): result is PromiseFulfilledResult<readonly [string, TypeDetail]> => result.status === 'fulfilled')
+              .filter(
+                (result): result is PromiseFulfilledResult<readonly [string, TypeDetail]> =>
+                  result.status === 'fulfilled',
+              )
               .map((result) => result.value)
 
             if (fulfilledTypes.length > 0) {
@@ -319,7 +330,10 @@ export const PokemonModal = memo(function PokemonModal({
   return (
     <div
       ref={backdropRef}
-      className={`detail-modal-backdrop detail-modal-${mode} fixed inset-0 z-50 flex items-center justify-center px-4 py-6`}
+      className={
+        `detail-modal-backdrop detail-modal-${mode} ` +
+        'fixed inset-0 z-50 flex items-center justify-center px-4 py-6'
+      }
       role="dialog"
       aria-modal="true"
       aria-label="Pokemon detail"
@@ -363,7 +377,9 @@ export const PokemonModal = memo(function PokemonModal({
                 <div className="detail-header-types">
                   <button
                     type="button"
-                    className={`detail-favorite-button${favoriteIds.has(detail.id) ? ' is-active' : ''}`}
+                    className={
+                      `detail-favorite-button${favoriteIds.has(detail.id) ? ' is-active' : ''}`
+                    }
                     onClick={() => onToggleFavorite(detail.id)}
                     aria-label={
                       favoriteIds.has(detail.id)
@@ -419,7 +435,11 @@ export const PokemonModal = memo(function PokemonModal({
 
                   <div className="detail-info-block">
                     <h3>Abilities</h3>
-                    <p>{detail.abilities.map(({ ability }) => titleCase(ability.name)).join(', ')}</p>
+                    <p>
+                      {detail.abilities
+                        .map(({ ability }) => titleCase(ability.name))
+                        .join(', ')}
+                    </p>
                   </div>
 
                   <div className="detail-info-block">
@@ -432,7 +452,10 @@ export const PokemonModal = memo(function PokemonModal({
                               <span>{multiplier}x Damage</span>
                               <div>
                                 {types.map((typeName) => (
-                                  <strong key={typeName} className={`detail-weakness-chip detail-type-${typeName}`}>
+                                  <strong
+                                    key={typeName}
+                                    className={`detail-weakness-chip detail-type-${typeName}`}
+                                  >
                                     {titleCase(typeName)}
                                   </strong>
                                 ))}
@@ -530,7 +553,8 @@ export const PokemonModal = memo(function PokemonModal({
                         alt=""
                         aria-hidden="true"
                         onError={(event) => {
-                          const fallbackSprite = detailCache[railId]?.sprites.front_default ?? officialImage(railId)
+                          const fallbackSprite =
+                            detailCache[railId]?.sprites.front_default ?? officialImage(railId)
                           if (event.currentTarget.src !== fallbackSprite) {
                             event.currentTarget.src = fallbackSprite
                             return
@@ -545,7 +569,9 @@ export const PokemonModal = memo(function PokemonModal({
                 })}
               </div>
               <p className="detail-rail-order">
-                {activePokemon ? `${titleCase(activePokemon.name)} in catalogue order` : 'Ordered numerically'}
+                {activePokemon
+                  ? `${titleCase(activePokemon.name)} in catalogue order`
+                  : 'Ordered numerically'}
               </p>
             </aside>
           </div>

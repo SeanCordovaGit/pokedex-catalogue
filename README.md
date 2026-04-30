@@ -1,7 +1,7 @@
 # Pokedex Catalogue
 
 A simple Pokedex web application built with React and TypeScript using the PokeAPI.
-Users can browse, search, filter, and view detailed information about Pokémon in a clean, responsive interface.
+Users can browse, search, filter, and view Pokémon details in a clean, responsive interface.
 
 ---
 
