@@ -57,6 +57,8 @@ export type PokemonSpecies = {
 export type TypeDetail = {
   damage_relations: {
     double_damage_from: NamedResource[]
+    half_damage_from: NamedResource[]
+    no_damage_from: NamedResource[]
   }
   pokemon: Array<{
     pokemon: NamedResource

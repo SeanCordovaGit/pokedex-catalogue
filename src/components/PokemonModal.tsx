@@ -34,6 +34,11 @@ const STAT_COLORS: Record<string, string> = {
   speed: '#23b35d',
 }
 
+type WeaknessGroup = {
+  multiplier: number
+  types: string[]
+}
+
 /**
  * Finds the display label for a base stat.
  * @param statName - PokeAPI stat key.
@@ -59,6 +64,44 @@ function getStatColor(statName: string) {
  */
 function getStatWidth(value: number) {
   return `${Math.min(100, (value / STAT_MAX) * 100)}%`
+}
+
+/**
+ * Calculates true incoming type weaknesses after dual-type resistances and immunities.
+ * @param defendingTypes - Pokemon types being attacked.
+ * @param typeCache - Cached PokeAPI type details.
+ * @returns Weakness groups sorted from highest to lowest multiplier.
+ */
+function getWeaknessGroups(defendingTypes: string[], typeCache: Record<string, TypeDetail>): WeaknessGroup[] {
+  const attackMultipliers = new Map<string, number>()
+
+  defendingTypes.forEach((defendingType) => {
+    const relations = typeCache[defendingType]?.damage_relations
+    if (!relations) return
+
+    relations.double_damage_from.forEach(({ name }) => {
+      attackMultipliers.set(name, (attackMultipliers.get(name) ?? 1) * 2)
+    })
+    relations.half_damage_from.forEach(({ name }) => {
+      attackMultipliers.set(name, (attackMultipliers.get(name) ?? 1) * 0.5)
+    })
+    relations.no_damage_from.forEach(({ name }) => {
+      attackMultipliers.set(name, 0)
+    })
+  })
+
+  return [...attackMultipliers.entries()]
+    .filter(([, multiplier]) => multiplier > 1)
+    .sort(([typeA, multiplierA], [typeB, multiplierB]) => multiplierB - multiplierA || typeA.localeCompare(typeB))
+    .reduce<WeaknessGroup[]>((groups, [typeName, multiplier]) => {
+      const existingGroup = groups.find((group) => group.multiplier === multiplier)
+      if (existingGroup) {
+        existingGroup.types.push(typeName)
+      } else {
+        groups.push({ multiplier, types: [typeName] })
+      }
+      return groups
+    }, [])
 }
 
 /**
@@ -258,15 +301,9 @@ export const PokemonModal = memo(function PokemonModal({
     species?.flavor_text_entries
       .find((entry) => entry.language.name === 'en')
       ?.flavor_text.replace(/\f|\n/g, ' ') ?? ''
-  const weaknesses = detail
-    ? Array.from(
-        new Set(
-          detail.types.flatMap(({ type }) => [
-            ...(typeCache[type.name]?.damage_relations.double_damage_from.map(({ name }) => name) ?? []),
-          ]),
-        ),
-      )
-    : []
+  const defendingTypes = detail?.types.map(({ type }) => type.name) ?? []
+  const typeMatchupsLoaded = defendingTypes.every((typeName) => Boolean(typeCache[typeName]))
+  const weaknessGroups = detail ? getWeaknessGroups(defendingTypes, typeCache) : []
   const heightInches = detail ? Math.round(detail.height * 3.93701) : 0
   const heightFeet = Math.floor(heightInches / 12)
   const remainingInches = heightInches % 12
@@ -364,33 +401,6 @@ export const PokemonModal = memo(function PokemonModal({
                       }}
                     />
                   </div>
-                  <div className="detail-nav-row">
-                    <button
-                      type="button"
-                      className="detail-nav-button"
-                      onClick={() => {
-                        if (previousPokemon) onNavigate(previousPokemon.id)
-                      }}
-                      aria-label="Previous Pokemon"
-                      disabled={!previousPokemon}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      PREV
-                    </button>
-                    <span>No. {formatId(detail.id)}</span>
-                    <button
-                      type="button"
-                      className="detail-nav-button"
-                      onClick={() => {
-                        if (nextPokemon) onNavigate(nextPokemon.id)
-                      }}
-                      aria-label="Next Pokemon"
-                      disabled={!nextPokemon}
-                    >
-                      NEXT
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
                 </section>
 
                 <section className="detail-info-panel">
@@ -414,47 +424,89 @@ export const PokemonModal = memo(function PokemonModal({
 
                   <div className="detail-info-block">
                     <h3>Weaknesses</h3>
-                    <p>
-                      {weaknesses.length > 0
-                        ? weaknesses.map((typeName) => titleCase(typeName)).join(', ')
-                        : 'Loading type matchups'}
-                    </p>
-                  </div>
-
-                  <div className="detail-info-block detail-stats-block">
-                    <h3>Base Stats</h3>
-                    <div className="detail-stat-bars">
-                      {detail.stats.map(({ stat, base_stat }) => (
-                        <div className="detail-stat-row" key={stat.name}>
-                          <span>{getStatLabel(stat.name)}</span>
-                          <strong>{base_stat}</strong>
-                          <div className="detail-stat-track">
-                            <span
-                              style={{
-                                width: getStatWidth(base_stat),
-                                background: getStatColor(stat.name),
-                              }}
-                            />
-                          </div>
+                    {typeMatchupsLoaded ? (
+                      weaknessGroups.length > 0 ? (
+                        <div className="detail-weakness-list">
+                          {weaknessGroups.map(({ multiplier, types }) => (
+                            <div className="detail-weakness-row" key={multiplier}>
+                              <span>{multiplier}x Damage</span>
+                              <div>
+                                {types.map((typeName) => (
+                                  <strong key={typeName} className={`detail-weakness-chip detail-type-${typeName}`}>
+                                    {titleCase(typeName)}
+                                  </strong>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                      <div className="detail-stat-row detail-stat-total">
-                        <span>Total</span>
-                        <strong>{statTotal}</strong>
-                        <div className="detail-stat-track" aria-hidden="true" />
-                      </div>
-                    </div>
+                      ) : (
+                        <p>No major weaknesses</p>
+                      )
+                    ) : (
+                      <p>Loading type matchups</p>
+                    )}
                   </div>
                 </section>
+
+                <div className="detail-description-card">
+                  <p>{flavorText || 'No field notes are available for this Pokemon.'}</p>
+                </div>
+
+                <div className="detail-info-block detail-stats-block">
+                  <h3>Base Stats</h3>
+                  <div className="detail-stat-bars">
+                    {detail.stats.map(({ stat, base_stat }) => (
+                      <div className="detail-stat-row" key={stat.name}>
+                        <span>{getStatLabel(stat.name)}</span>
+                        <strong>{base_stat}</strong>
+                        <div className="detail-stat-track">
+                          <span
+                            style={{
+                              width: getStatWidth(base_stat),
+                              background: getStatColor(stat.name),
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <div className="detail-stat-row detail-stat-total">
+                      <span>Total</span>
+                      <strong>{statTotal}</strong>
+                      <div className="detail-stat-track" aria-hidden="true" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="detail-nav-row">
+                  <button
+                    type="button"
+                    className="detail-nav-button"
+                    onClick={() => {
+                      if (previousPokemon) onNavigate(previousPokemon.id)
+                    }}
+                    aria-label="Previous Pokemon"
+                    disabled={!previousPokemon}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    PREV
+                  </button>
+                  <span>No. {formatId(detail.id)}</span>
+                  <button
+                    type="button"
+                    className="detail-nav-button"
+                    onClick={() => {
+                      if (nextPokemon) onNavigate(nextPokemon.id)
+                    }}
+                    aria-label="Next Pokemon"
+                    disabled={!nextPokemon}
+                  >
+                    NEXT
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
-              <footer className="detail-research-note">
-                <p>{flavorText || 'No field notes are available for this Pokemon.'}</p>
-                <div>
-                  <span>Research Level</span>
-                  <strong>10</strong>
-                </div>
-              </footer>
             </section>
 
             <aside className="detail-region-rail" aria-label="Nearby Pokemon">
